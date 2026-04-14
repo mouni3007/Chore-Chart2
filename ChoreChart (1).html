@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<!-- ChoreChart v20260414-221834 -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chore Chart</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f5f5f0;min-height:100vh;color:#1a1a1a}
+.app{max-width:860px;margin:0 auto;padding:14px}
+.screen{display:none}.screen.active{display:block}
+.card{background:#fff;border:1px solid #e0e0d8;border-radius:12px;padding:16px;margin-bottom:12px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;font-family:Arial,sans-serif;transition:background 0.15s}
+.btn:hover{background:#f0f0ec}.btn:active{transform:scale(0.97)}
+.btn-primary{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+.btn-success{background:#dcfce7;color:#166534;border-color:#86efac}
+.btn-danger{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.btn-warn{background:#fef9c3;color:#854d0e;border-color:#fde047}
+.btn-purple{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
+.btn-sm{padding:5px 11px;font-size:12px}
+.tag{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;font-weight:600}
+.tag-morning{background:#ede9fe;color:#5b21b6}
+.tag-afterschool{background:#d1fae5;color:#065f46}
+.tag-anytime{background:#dbeafe;color:#1e40af}
+.tag-weekend{background:#fef3c7;color:#92400e}
+.tag-extra{background:#fce7f3;color:#9d174d}
+input[type=text],input[type=number],input[type=time],input[type=date],select,textarea{width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#1a1a1a;font-size:14px;font-family:Arial,sans-serif}
+input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;flex-shrink:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.metric{background:#f5f5f0;border-radius:8px;padding:12px;text-align:center}
+.metric-val{font-size:24px;font-weight:700;color:#1a1a1a}
+.metric-lbl{font-size:11px;color:#666;margin-top:2px}
+.progress-bar{height:10px;background:#e5e5e0;border-radius:99px;overflow:hidden;margin:5px 0}
+.progress-fill{height:100%;background:#2563eb;border-radius:99px;transition:width 0.4s}
+.progress-fill-g{background:#16a34a}
+.task-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0ec}
+.task-row:last-child{border-bottom:none}
+.star-badge{background:#fef3c7;color:#92400e;border-radius:6px;font-size:12px;padding:3px 8px;font-weight:600;white-space:nowrap}
+.extra-badge{background:#fce7f3;color:#9d174d;border-radius:6px;font-size:12px;padding:3px 8px;font-weight:600;white-space:nowrap}
+.sep{border:none;border-top:1px solid #f0f0ec;margin:12px 0}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:13px;color:#555;margin-bottom:4px;font-weight:600}
+.radio-group{display:flex;gap:8px;flex-wrap:wrap}
+.radio-opt{display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:6px 11px;border:1px solid #ccc;border-radius:8px;background:#fff}
+.radio-opt:hover{background:#f5f5f0}
+.radio-opt input[type=radio]{width:14px;height:14px}
+.section-title{font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px}
+.nav-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.streak-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;transition:transform 0.1s}
+.streak-dot:hover{transform:scale(1.2)}
+.sd-done{background:#dcfce7;color:#166534}
+.sd-miss{background:#f0f0ec;color:#aaa}
+.sd-today{background:#dbeafe;color:#1e40af}
+.sd-past-selected{outline:2px solid #2563eb}
+.big-kid-btn{width:100%;display:flex;align-items:center;gap:14px;padding:18px 20px;background:#fff;border:1px solid #e0e0d8;border-radius:12px;cursor:pointer;transition:all 0.15s;margin-bottom:12px;text-align:left;font-family:Arial,sans-serif}
+.big-kid-btn:hover{border-color:#aaa;background:#fafaf8}
+.confetti-piece{position:absolute;border-radius:2px;animation:fall 2.5s linear forwards}
+@keyframes fall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(140px) rotate(720deg);opacity:0}}
+.sync-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:10px}
+.sync-ok{background:#dcfce7;color:#166534}
+.sync-err{background:#fee2e2;color:#991b1b}
+.sync-loading{background:#fef3c7;color:#92400e}
+.cal-day{padding:6px 4px;text-align:center;border-radius:6px;cursor:pointer;font-size:12px;border:1px solid transparent}
+.cal-day:hover{background:#f0f0ec}
+.cal-day.done{background:#dcfce7;color:#166534;font-weight:700}
+.cal-day.missed{background:#f0f0ec;color:#aaa}
+.cal-day.today{background:#dbeafe;color:#1e40af;font-weight:700}
+.cal-day.future{color:#ddd;cursor:default}
+.cal-day.selected{outline:2px solid #2563eb}
+.history-banner{background:#fef3c7;border:1px solid #fde047;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#92400e;font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SYNC STATUS -->
+<div id="sync-bar" class="sync-bar sync-loading" style="display:none">⏳ Syncing with Google Sheets...</div>
+
+<!-- HOME -->
+<div id="s-home" class="screen active">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding-top:4px;margin-bottom:8px">
+    <span style="font-size:22px;font-weight:700">🏠 Chore Chart</span>
+    <button class="btn btn-sm" onclick="checkPasscode()">⚙ Parent</button>
+  </div>
+  <div style="font-size:22px;font-weight:700;text-align:center;margin-bottom:2px" id="home-date"></div>
+  <div style="text-align:center;color:#666;font-size:14px;margin-bottom:2px" id="home-day"></div>
+  <div style="text-align:center;font-size:11px;color:#ccc;margin-bottom:10px">v20260414</div>
+  <div id="sync-home" style="text-align:center;font-size:12px;color:#aaa;margin-bottom:14px"></div>
+  <div style="font-size:16px;color:#666;text-align:center;margin-bottom:14px">Who are you?</div>
+  <div id="home-kids" style="max-width:420px;margin:0 auto"></div>
+</div>
+
+<!-- KID VIEW -->
+<div id="s-kid" class="screen">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <button class="btn btn-sm" onclick="goTo('s-home')">← Back</button>
+    <div id="kid-big-avatar" style="font-size:30px;width:46px;height:46px;border-radius:50%;background:#f0f0ec;display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
+    <div style="flex:1">
+      <div style="font-size:18px;font-weight:700" id="kid-name-title"></div>
+      <div style="font-size:12px;color:#666" id="kid-date-sub"></div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:20px;font-weight:700" id="kid-stars-disp"></div>
+      <div style="font-size:11px;color:#666">total stars</div>
+    </div>
+  </div>
+
+  <div id="history-banner" class="history-banner" style="display:none"></div>
+  <div id="celebration-box" style="display:none"></div>
+
+  <div class="grid3" style="margin-bottom:12px">
+    <div class="metric"><div class="metric-val" id="k-done">0</div><div class="metric-lbl">done</div></div>
+    <div class="metric"><div class="metric-val" id="k-streak">0</div><div class="metric-lbl">🔥 streak</div></div>
+    <div class="metric"><div class="metric-val" id="k-total">0</div><div class="metric-lbl">tasks</div></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="section-title" style="margin-bottom:0">History — tap a day to view</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="calNav(-1)">‹</button>
+        <button class="btn btn-sm" onclick="calNav(1)">›</button>
+        <button class="btn btn-sm btn-primary" onclick="jumpToday()">Today</button>
+      </div>
+    </div>
+    <div id="cal-month-label" style="font-size:14px;font-weight:700;margin-bottom:8px;color:#333"></div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+      <div style="text-align:center;font-size:11px;color:#aaa;font-weight:700">Su</div>
+      <div style="text-align:center;font-size:11px;color:#aaa;font-weight:700">Mo</div>
+      <div style="text-align:center;font-size:11px;color:#aaa;font-weight:700">Tu</div>
+      <div style="text-align:center;font-size:11px;color:#aaa;font-weight:700">We</div>
+      <div style="text-align:center;font-size:11px;color:#aaa;font-weight:700">Th</div>
+      <div style="text-align:center;font-size:11px;color:#aaa;font-weight:700">Fr</div>
+      <div style="text-align:center;font-size:11px;color:#aaa;font-weight:700">Sa</div>
+    </div>
+    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+    <div style="display:flex;gap:10px;margin-top:8px;font-size:11px;color:#888">
+      <span>🟩 all done</span><span>⬜ missed</span><span>🟦 today</span>
+    </div>
+  </div>
+
+  <div id="kid-task-sections"></div>
+
+  <div class="card">
+    <div class="section-title">🏆 Prizes</div>
+    <div id="kid-prizes-list"></div>
+  </div>
+</div>
+
+<!-- PARENT -->
+<div id="s-parent" class="screen">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <button class="btn btn-sm" onclick="goTo('s-home')">← Back</button>
+    <span style="font-size:20px;font-weight:700">⚙ Parent Settings</span>
+  </div>
+  <div id="sync-parent" style="font-size:12px;color:#888;margin-bottom:10px"></div>
+  <div class="nav-bar">
+    <button class="btn" id="ptab-tasks" onclick="pTab('tasks')">Tasks</button>
+    <button class="btn" id="ptab-prizes" onclick="pTab('prizes')">Prizes</button>
+    <button class="btn" id="ptab-stars" onclick="pTab('stars')">Stars</button>
+    <button class="btn" id="ptab-manage" onclick="pTab('manage')">Manage</button>
+    <button class="btn" id="ptab-history" onclick="pTab('history')">History</button>
+    <button class="btn" id="ptab-notif" onclick="pTab('notif')">Reminders</button>
+  </div>
+
+  <div id="p-tasks">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px">Add new task</div>
+      <div class="form-row"><label>Task name</label><input type="text" id="task-name" placeholder="e.g. Make bed"></div>
+      <div class="form-row"><label>Icon (paste any emoji)</label><input type="text" id="task-icon" placeholder="e.g. 🛏️" style="width:90px"></div>
+      <div class="form-row"><label>Who does it</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="ttype" value="shared" checked> Both</label>
+          <label class="radio-opt"><input type="radio" name="ttype" value="avyan"> Avyan only</label>
+          <label class="radio-opt"><input type="radio" name="ttype" value="moksh"> Moksh only</label>
+          <label class="radio-opt"><input type="radio" name="ttype" value="rotate"> Rotating</label>
+        </div>
+      </div>
+      <div id="rotate-opts" class="form-row" style="display:none"><label>Rotation style</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="rtype" value="daily" checked> Daily</label>
+          <label class="radio-opt"><input type="radio" name="rtype" value="weekly"> Weekly</label>
+          <label class="radio-opt"><input type="radio" name="rtype" value="manual"> Manual</label>
+        </div>
+      </div>
+      <div id="manual-assign" class="form-row" style="display:none"><label>Currently assigned to</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="massign" value="avyan" checked> Avyan</label>
+          <label class="radio-opt"><input type="radio" name="massign" value="moksh"> Moksh</label>
+        </div>
+      </div>
+      <div class="form-row"><label>Category</label>
+        <select id="task-cat">
+          <option value="morning">Morning</option>
+          <option value="afterschool">After school</option>
+          <option value="anytime">Anytime</option>
+          <option value="weekend">Weekend</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Days active</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="tdays" value="daily" checked> Every day</label>
+          <label class="radio-opt"><input type="radio" name="tdays" value="weekday"> Mon–Fri only</label>
+          <label class="radio-opt"><input type="radio" name="tdays" value="weekend"> Weekends only</label>
+        </div>
+      </div>
+      <div class="form-row"><label>Stars</label><input type="number" id="task-stars" value="1" min="1" max="20" style="width:70px"></div>
+      <button class="btn btn-primary" onclick="addTask()">+ Add task</button>
+    </div>
+    <div class="card"><div class="section-title">All tasks</div><div id="task-list-admin"></div></div>
+  </div>
+
+  <div id="p-prizes" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px">Add prize</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">Each kid can have a different star target for the same prize — useful when one kid has more tasks than the other.</div>
+      <div class="form-row"><label>Prize description</label><input type="text" id="prize-name" placeholder="e.g. $10 pocket money"></div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div><label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:4px">⭐ Stars for Avyan</label><input type="number" id="prize-stars-avyan" value="100" min="1"></div>
+        <div><label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:4px">⭐ Stars for Moksh</label><input type="number" id="prize-stars-moksh" value="100" min="1"></div>
+      </div>
+      <button class="btn btn-primary" onclick="addPrize()">+ Add prize</button>
+    </div>
+    <div class="card"><div class="section-title">Current prizes</div><div id="prize-list-admin"></div></div>
+  </div>
+
+  <div id="p-stars" style="display:none"><div id="star-bank-content"></div></div>
+
+  <div id="p-manage" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Give or deduct stars with reason</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">Use this to reward good behaviour outside tasks, or deduct stars for bad behaviour — the reason is saved to their history so you remember why.</div>
+      <div class="form-row"><label>Kid</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="extrakid" value="avyan" checked> Avyan</label>
+          <label class="radio-opt"><input type="radio" name="extrakid" value="moksh"> Moksh</label>
+        </div>
+      </div>
+      <div class="form-row"><label>Reason (required)</label><input type="text" id="extra-reason" placeholder="e.g. Helped carry groceries / fought with sibling"></div>
+      <div class="form-row"><label>Stars</label><input type="number" id="extra-stars" value="5" min="1" max="50" style="width:80px"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="giveExtraCredit('give')">🌟 Give stars</button>
+        <button class="btn btn-danger" onclick="giveExtraCredit('deduct')">⚠️ Deduct stars</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Uncheck a task (today — parent override)</div>
+      <div class="form-row"><label>Kid</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="unkid" value="avyan" checked> Avyan</label>
+          <label class="radio-opt"><input type="radio" name="unkid" value="moksh"> Moksh</label>
+        </div>
+      </div>
+      <div id="uncheck-list"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px">Streak bonus</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">Stars accumulate — redeem whenever, no fixed schedule needed.</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div><label style="font-size:12px;color:#666;font-weight:600">Days needed</label><br><input type="number" id="streak-days" value="7" min="1" max="60" style="width:80px;margin-top:4px"></div>
+        <div><label style="font-size:12px;color:#666;font-weight:600">Bonus stars</label><br><input type="number" id="streak-bonus" value="20" min="1" style="width:80px;margin-top:4px"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-success btn-sm" onclick="giveStreakBonus('avyan')">Give to Avyan</button>
+        <button class="btn btn-success btn-sm" onclick="giveStreakBonus('moksh')">Give to Moksh</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="p-history" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px">Edit a past day</div>
+      <div class="form-row"><label>Kid</label>
+        <div class="radio-group">
+          <label class="radio-opt"><input type="radio" name="histkid" value="avyan" checked> Avyan</label>
+          <label class="radio-opt"><input type="radio" name="histkid" value="moksh"> Moksh</label>
+        </div>
+      </div>
+      <div class="form-row"><label>Select date</label><input type="date" id="hist-date" style="width:180px"></div>
+      <button class="btn btn-primary" onclick="loadHistoryDay()">Load this day</button>
+    </div>
+    <div id="hist-day-content" style="display:none"></div>
+  </div>
+
+  <div id="p-notif" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Parent passcode</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">Set a 4-digit passcode to protect parent settings. Leave blank for no passcode.</div>
+      <div class="form-row"><label>New passcode (4 digits, or blank to remove)</label><input type="number" id="new-passcode" placeholder="e.g. 1234" style="width:140px" maxlength="4"></div>
+      <button class="btn btn-primary btn-sm" onclick="savePasscode()">Save passcode</button>
+      <div id="passcode-status" style="font-size:13px;color:#666;margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Evening reminder</div>
+      <div style="font-size:13px;color:#666;margin-bottom:14px;line-height:1.6">
+        Reminder uses browser notifications. Keep the browser tab open for it to fire.<br>
+        <strong>Windows:</strong> Allow notifications when Chrome asks.<br>
+        <strong>Fire Tablet:</strong> Allow notifications in Silk browser, keep tab open in background.
+      </div>
+      <div class="form-row"><label>Reminder time</label><input type="time" id="notif-time" value="19:30" style="width:140px"></div>
+      <div class="form-row"><label>Message</label><input type="text" id="notif-msg" value="Hey! Don't forget to finish your chores ⭐"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="enableNotif()">Enable reminder</button>
+        <button class="btn btn-sm" onclick="testNotif()">Send test now</button>
+        <button class="btn btn-danger btn-sm" onclick="disableNotif()">Disable</button>
+      </div>
+      <div style="margin-top:12px;font-size:13px;color:#555;font-weight:600" id="notif-panel-status"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+var SCRIPT_URL='https://script.google.com/macros/s/AKfycbxOMX1RJ7sYxIMo3hBqZAhzUhyy08kOIcHDjG-i2fzzHyX_V93C4rHlXaloLpGHLEzYqA/exec';
+var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var CAT_LABELS={morning:'Morning',afterschool:'After school',anytime:'Anytime',weekend:'Weekend'};
+var CAT_TAGS={morning:'tag-morning',afterschool:'tag-afterschool',anytime:'tag-anytime',weekend:'tag-weekend'};
+var CONFETTI_COLORS=['#2563eb','#16a34a','#d97706','#db2777','#0891b2','#7c3aed'];
+var CELEBRATE_MSGS=['Amazing! All done! 🌟','You crushed it! 🏆','Super star! ⭐','Incredible! 🎉','Every task done! 🚀','Way to go! 💪'];
+
+var DEFAULT_TASKS=[
+  {id:'t1',name:'Drink a glass of water',icon:'🥛',type:'shared',cat:'morning',days:'daily',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t2',name:'Moisturiser / sunscreen',icon:'🧴',type:'shared',cat:'morning',days:'daily',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t3',name:'Finish lunch box',icon:'🍱',type:'shared',cat:'afterschool',days:'weekday',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t4',name:'Finish water bottle',icon:'💧',type:'shared',cat:'afterschool',days:'weekday',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t5',name:'Put lunch box in sink',icon:'🎒',type:'shared',cat:'afterschool',days:'weekday',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t6',name:'Remove papers & bag after homework',icon:'📁',type:'shared',cat:'afterschool',days:'weekday',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t7',name:'Pray after shower',icon:'🙏',type:'shared',cat:'afterschool',days:'daily',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t8',name:'Vaseline before sleep',icon:'💤',type:'shared',cat:'anytime',days:'daily',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t9',name:'Morning poop',icon:'💩',type:'moksh',cat:'morning',days:'daily',stars:1,rotationType:null,currentAssignee:null},
+  {id:'t10',name:'Laundry',icon:'👕',type:'rotate',cat:'weekend',days:'weekend',stars:3,rotationType:'weekly',currentAssignee:'avyan'},
+  {id:'t11',name:'Clean TV stand',icon:'📺',type:'rotate',cat:'weekend',days:'weekend',stars:2,rotationType:'weekly',currentAssignee:'moksh'},
+  {id:'t12',name:'Clean Buddha stand',icon:'🪷',type:'rotate',cat:'weekend',days:'weekend',stars:2,rotationType:'weekly',currentAssignee:'avyan'}
+];
+
+var state={
+  tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)),
+  prizes:[],stars:{avyan:0,moksh:0},
+  checks:{},extraCredits:{},
+  rotationStart:new Date().toDateString(),
+  avatars:{avyan:'🦁',moksh:'🦁'},
+  notif:{enabled:false,time:'19:30',msg:"Hey! Don't forget to finish your chores ⭐"},passcode:''
+};
+
+var currentKid=null;
+var viewingDate=null;
+var calYear=new Date().getFullYear();
+var calMonth=new Date().getMonth();
+var notifTimer=null;
+var syncTimeout=null;
+var lastSyncTime=null;
+
+function saveLocal(){try{localStorage.setItem('choreV4',JSON.stringify(state));}catch(e){}}
+function loadLocal(){
+  try{var d=localStorage.getItem('choreV4');
+    if(d){var p=JSON.parse(d);
+      state.tasks=p.tasks&&p.tasks.length?p.tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS));
+      state.prizes=p.prizes||[];state.stars=p.stars||{avyan:0,moksh:0};
+      state.checks=p.checks||{};state.extraCredits=p.extraCredits||{};
+      state.rotationStart=p.rotationStart||new Date().toDateString();
+      state.avatars=p.avatars||{avyan:'🦁',moksh:'🦁'};
+      state.notif=p.notif||{enabled:false,time:'19:30',msg:"Don't forget chores!"};state.passcode=p.passcode||'';
+    }
+  }catch(e){}
+}
+
+function syncToSheets(){
+  if(syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout=setTimeout(function(){doSync();},1500);
+}
+
+function doSync(){
+  showSyncBar('loading','⏳ Saving to Google Sheets...');
+  var payload={
+    tasks:JSON.stringify(state.tasks),
+    prizes:JSON.stringify(state.prizes),
+    stars:JSON.stringify(state.stars),
+    checks:JSON.stringify(state.checks),
+    extraCredits:JSON.stringify(state.extraCredits),
+    rotationStart:state.rotationStart,
+    avatars:JSON.stringify(state.avatars),
+    notif:JSON.stringify(state.notif),
+    passcode:state.passcode||''
+  };
+  var url=SCRIPT_URL+'?action=saveAll&payload='+encodeURIComponent(JSON.stringify(payload));
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){lastSyncTime=new Date();showSyncBar('ok','✅ Synced at '+lastSyncTime.toLocaleTimeString());}
+    else showSyncBar('err','⚠️ Sync error: '+d.error);
+  }).catch(function(){showSyncBar('err','⚠️ Could not reach Google Sheets — saved locally');});
+}
+
+function loadFromSheets(cb){
+  showSyncBar('loading','⏳ Loading from Google Sheets...');
+  var url=SCRIPT_URL+'?action=load';
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    if(d.ok&&d.data){
+      var data=d.data;
+      if(data.tasks) state.tasks=JSON.parse(data.tasks);
+      if(data.prizes) state.prizes=JSON.parse(data.prizes);
+      if(data.stars) state.stars=JSON.parse(data.stars);
+      if(data.checks) state.checks=JSON.parse(data.checks);
+      if(data.extraCredits) state.extraCredits=JSON.parse(data.extraCredits);
+      if(data.rotationStart) state.rotationStart=data.rotationStart;
+      if(data.avatars) state.avatars=JSON.parse(data.avatars);
+      if(data.notif) state.notif=JSON.parse(data.notif);
+      if(data.passcode) state.passcode=data.passcode||'';
+      if(!state.tasks||!state.tasks.length) state.tasks=JSON.parse(JSON.stringify(DEFAULT_TASKS));
+      if(!state.extraCredits) state.extraCredits={};
+      saveLocal();lastSyncTime=new Date();
+      showSyncBar('ok','✅ Loaded from Google Sheets at '+lastSyncTime.toLocaleTimeString());
+    } else showSyncBar('err','⚠️ Could not load from Sheets — using local data');
+    if(cb) cb();
+  }).catch(function(){
+    showSyncBar('err','⚠️ No internet — using local data');
+    if(cb) cb();
+  });
+}
+
+function showSyncBar(type,msg){
+  var bar=document.getElementById('sync-bar');
+  bar.style.display='flex';
+  bar.className='sync-bar '+(type==='ok'?'sync-ok':type==='err'?'sync-err':'sync-loading');
+  bar.textContent=msg;
+  var sh=document.getElementById('sync-home');
+  if(sh) sh.textContent=msg;
+  var sp=document.getElementById('sync-parent');
+  if(sp) sp.textContent=msg;
+  if(type==='ok') setTimeout(function(){bar.style.display='none';},3000);
+}
+
+function saveAndSync(){saveLocal();syncToSheets();}
+
+function today(){return new Date();}
+function todayKey(){var d=today();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function dateKey(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function isWeekend(d){var day=(d||today()).getDay();return day===0||day===6;}
+function taskActiveOnDate(task,d){
+  if(task.days==='weekday') return !isWeekend(d);
+  if(task.days==='weekend') return isWeekend(d);
+  return true;
+}
+
+function getRotatedKidOnDate(task,d){
+  if(task.rotationType==='manual') return task.currentAssignee||'avyan';
+  var start=new Date(state.rotationStart);
+  var diff=Math.floor((d-start)/86400000);
+  return task.rotationType==='daily'?(diff%2===0?'avyan':'moksh'):(Math.floor(diff/7)%2===0?'avyan':'moksh');
+}
+
+function getKidTasksOnDate(kidId,d){
+  return state.tasks.filter(function(t){
+    if(!taskActiveOnDate(t,d)) return false;
+    if(t.type==='shared') return true;
+    if(t.type===kidId) return true;
+    if(t.type==='rotate') return getRotatedKidOnDate(t,d)===kidId;
+    return false;
+  });
+}
+
+function calcStreak(kidId){
+  var streak=0;var d=new Date();
+  for(var i=0;i<180;i++){
+    var k=dateKey(d);var dt=new Date(d.getTime());
+    var tasks=getKidTasksOnDate(kidId,dt);
+    if(!tasks.length){d.setDate(d.getDate()-1);continue;}
+    var checks=state.checks[k]&&state.checks[k][kidId];
+    if(tasks.filter(function(t){return checks&&checks[t.id];}).length===tasks.length) streak++;
+    else break;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  if(id==='s-home'){viewingDate=null;renderHome();}
+}
+
+function renderHome(){
+  var d=today();
+  document.getElementById('home-date').textContent=MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
+  document.getElementById('home-day').textContent=DAYS[d.getDay()];
+  var el=document.getElementById('home-kids');el.innerHTML='';
+  [{id:'avyan',name:'Avyan'},{id:'moksh',name:'Moksh'}].forEach(function(k){
+    var av=state.avatars[k.id]||'🌟';
+    var tasks=getKidTasksOnDate(k.id,d);
+    var tk=todayKey();
+    var done=tasks.filter(function(t){return state.checks[tk]&&state.checks[tk][k.id]&&state.checks[tk][k.id][t.id];}).length;
+    var pct=tasks.length?Math.round(done/tasks.length*100):0;
+    el.innerHTML+='<button class="big-kid-btn" onclick="openKid(\''+k.id+'\')">'
+      +'<div style="font-size:32px;width:54px;height:54px;border-radius:50%;background:#f0f0ec;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+av+'</div>'
+      +'<div style="flex:1"><div style="font-size:18px;font-weight:700;color:#1a1a1a">'+k.name+'</div>'
+      +'<div style="font-size:13px;color:#666;margin-top:2px">⭐ '+(state.stars[k.id]||0)+' stars &nbsp; 🔥 '+calcStreak(k.id)+'-day streak</div>'
+      +'<div class="progress-bar" style="width:140px;margin-top:6px"><div class="progress-fill" style="width:'+pct+'%"></div></div>'
+      +'<div style="font-size:12px;color:#aaa">'+done+'/'+tasks.length+' done today</div></div></button>';
+  });
+}
+
+function openKid(kidId){
+  currentKid=kidId;viewingDate=null;
+  calYear=today().getFullYear();calMonth=today().getMonth();
+  document.getElementById('kid-name-title').textContent=kidId==='avyan'?'Avyan':'Moksh';
+  document.getElementById('kid-big-avatar').textContent=state.avatars[kidId]||'🌟';
+  document.getElementById('celebration-box').style.display='none';
+  document.getElementById('history-banner').style.display='none';
+  renderKidScreen();goTo('s-kid');
+}
+
+function getViewDate(){return viewingDate||today();}
+function getViewKey(){return dateKey(getViewDate());}
+function isViewingToday(){return getViewKey()===todayKey();}
+
+function renderKidScreen(){
+  if(!currentKid) return;
+  var vd=getViewDate();var vk=getViewKey();
+  var tasks=getKidTasksOnDate(currentKid,vd);
+  if(!state.checks[vk]) state.checks[vk]={};
+  if(!state.checks[vk][currentKid]) state.checks[vk][currentKid]={};
+  var done=tasks.filter(function(t){return state.checks[vk][currentKid][t.id];}).length;
+  var streak=calcStreak(currentKid);
+  document.getElementById('k-done').textContent=done;
+  document.getElementById('k-total').textContent=tasks.length;
+  document.getElementById('k-streak').textContent=streak;
+  document.getElementById('kid-stars-disp').textContent='⭐ '+(state.stars[currentKid]||0);
+  document.getElementById('kid-date-sub').textContent=DAYS[vd.getDay()]+', '+MONTHS[vd.getMonth()]+' '+vd.getDate()+', '+vd.getFullYear();
+
+  var banner=document.getElementById('history-banner');
+  if(!isViewingToday()){
+    banner.style.display='block';
+    banner.textContent='📅 Viewing '+MONTHS[vd.getMonth()]+' '+vd.getDate()+' — '+DAYS[vd.getDay()]+' (read-only past day)';
+  } else banner.style.display='none';
+
+  renderCalendar();
+
+  // Extra credits for this day
+  var extras=(state.extraCredits[vk]&&state.extraCredits[vk][currentKid])||[];
+  var extraStars=extras.reduce(function(a,e){return a+e.stars;},0);
+
+  // Task sections
+  var sectionsEl=document.getElementById('kid-task-sections');sectionsEl.innerHTML='';
+  if(!tasks.length&&!extras.length){
+    sectionsEl.innerHTML='<div class="card" style="text-align:center;color:#aaa;padding:20px">No tasks for this day 🎉</div>';
+  } else {
+    var groups={};var order=['morning','afterschool','anytime','weekend'];
+    tasks.forEach(function(t){var c=t.cat||'anytime';if(!groups[c])groups[c]=[];groups[c].push(t);});
+    order.filter(function(c){return groups[c]&&groups[c].length;}).forEach(function(c){
+      var doneCat=groups[c].filter(function(t){return state.checks[vk][currentKid][t.id];}).length;
+      var rows='';
+      groups[c].forEach(function(t){
+        var checked=!!state.checks[vk][currentKid][t.id];
+        var canCheck=isViewingToday();
+        rows+='<div class="task-row">'
+          +'<span style="font-size:24px;width:30px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
+          +(canCheck?'<input type="checkbox" '+(checked?'checked':'')+' onchange="toggleTask(\''+t.id+'\',this.checked)">'
+            :'<span style="font-size:20px;flex-shrink:0">'+(checked?'☑️':'⬜')+'</span>')
+          +'<div style="flex:1;font-size:15px;color:#1a1a1a;'+(checked?'text-decoration:line-through;color:#bbb':'')+'">'+t.name+'</div>'
+          +'<span class="star-badge">⭐ '+t.stars+'</span></div>';
+      });
+      sectionsEl.innerHTML+='<div class="card">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        +'<span class="tag '+(CAT_TAGS[c]||'tag-anytime')+'">'+(CAT_LABELS[c]||c)+'</span>'
+        +'<span style="font-size:12px;color:#aaa">'+doneCat+'/'+groups[c].length+' done</span></div>'+rows+'</div>';
+    });
+
+    if(extras.length){
+      var erows='';
+      extras.forEach(function(e){
+        var isDeduct=e.stars<0;
+        erows+='<div class="task-row"><span style="font-size:24px;flex-shrink:0">'+(isDeduct?'⚠️':'🌟')+'</span>'
+          +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+(isDeduct?'#991b1b':'#166534')+'">'+(isDeduct?'Stars deducted':'Extra stars')+'</div>'
+          +'<div style="font-size:12px;color:#666">'+e.reason+'</div></div>'
+          +'<span style="background:'+(isDeduct?'#fee2e2':'#fce7f3')+';color:'+(isDeduct?'#991b1b':'#9d174d')+';border-radius:6px;font-size:12px;padding:3px 8px;font-weight:600;white-space:nowrap">⭐ '+(isDeduct?e.stars:'+'+e.stars)+'</span></div>';
+      });
+      var netStars=extras.reduce(function(a,e){return a+e.stars;},0);
+      sectionsEl.innerHTML+='<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        +'<span class="tag tag-extra">Adjustments</span><span style="font-size:12px;color:'+(netStars>=0?'#aaa':'#991b1b')+'">'+(netStars>=0?'+':'')+netStars+' stars</span></div>'+erows+'</div>';
+    }
+  }
+
+  // Prizes
+  var prizesEl=document.getElementById('kid-prizes-list');
+  var myStars=state.stars[currentKid]||0;
+  if(!state.prizes.length){prizesEl.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:12px">No prizes yet — ask a parent!</div>';}
+  else{prizesEl.innerHTML='';
+    state.prizes.forEach(function(p){
+      var target=getPrizeStars(p,currentKid);
+      var pct=Math.min(100,Math.max(0,Math.round(myStars/target*100)));
+      var remaining=target-myStars;
+      prizesEl.innerHTML+='<div style="padding:9px 0;border-bottom:1px solid #f0f0ec">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+        +'<span style="font-size:14px;font-weight:700">'+p.name+'</span>'
+        +'<span class="star-badge">⭐ '+myStars+' / '+target+'</span></div>'
+        +'<div class="progress-bar"><div class="progress-fill-g progress-fill" style="width:'+pct+'%"></div></div>'
+        +'<div style="font-size:12px;color:'+(pct>=100?'#16a34a':'#888')+'">'
+        +(pct>=100?'🎉 You earned this! Tell a parent!':''+remaining+' more star'+(remaining===1?'':'s')+' to go — keep it up!')
+        +'</div></div>';
+    });
+  }
+
+  if(isViewingToday()&&tasks.length>0&&done===tasks.length) showCelebration(tasks,vk);
+  else document.getElementById('celebration-box').style.display='none';
+}
+
+function renderCalendar(){
+  var label=document.getElementById('cal-month-label');
+  label.textContent=MONTHS[calMonth]+' '+calYear;
+  var grid=document.getElementById('cal-grid');grid.innerHTML='';
+  var first=new Date(calYear,calMonth,1).getDay();
+  var daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  var todayD=today();var tk=todayKey();
+
+  for(var i=0;i<first;i++) grid.innerHTML+='<div></div>';
+  for(var d=1;d<=daysInMonth;d++){
+    var dt=new Date(calYear,calMonth,d);
+    var k=dateKey(dt);
+    var isFuture=dt>todayD&&k!==tk;
+    var isToday=k===tk;
+    var isSelected=viewingDate&&dateKey(viewingDate)===k;
+    var tasks=getKidTasksOnDate(currentKid,dt);
+    var checks=state.checks[k]&&state.checks[k][currentKid];
+    var allDone=tasks.length>0&&tasks.filter(function(t){return checks&&checks[t.id];}).length===tasks.length;
+    var hasExtra=(state.extraCredits[k]&&state.extraCredits[k][currentKid]&&state.extraCredits[k][currentKid].length>0);
+    var cls='cal-day'+(isFuture?' future':isToday?' today':allDone?' done':' missed')+(isSelected?' selected':'');
+    var dd=d;var ddt=new Date(calYear,calMonth,dd);
+    var click=isFuture?'':(isToday?'onclick="jumpToday()"':'onclick="selectCalDay(new Date('+calYear+','+(calMonth)+','+dd+'))"');
+    grid.innerHTML+='<div class="'+cls+'" '+click+'>'+d+(hasExtra?'<span style="font-size:7px;display:block">⭐</span>':'')+'</div>';
+  }
+}
+
+function calNav(dir){
+  calMonth+=dir;
+  if(calMonth<0){calMonth=11;calYear--;}
+  if(calMonth>11){calMonth=0;calYear++;}
+  renderCalendar();
+}
+
+function jumpToday(){
+  viewingDate=null;calYear=today().getFullYear();calMonth=today().getMonth();
+  renderKidScreen();
+}
+
+function selectCalDay(d){
+  viewingDate=d;calYear=d.getFullYear();calMonth=d.getMonth();
+  renderKidScreen();
+}
+
+function toggleTask(taskId,checked){
+  if(!isViewingToday()) return;
+  var tk=todayKey();
+  if(!state.checks[tk]) state.checks[tk]={};
+  if(!state.checks[tk][currentKid]) state.checks[tk][currentKid]={};
+  var task=state.tasks.find(function(t){return t.id===taskId;});
+  if(!task) return;
+  if(checked&&!state.checks[tk][currentKid][taskId]){
+    state.stars[currentKid]=(state.stars[currentKid]||0)+task.stars;
+    state.checks[tk][currentKid][taskId]=true;
+  } else if(!checked&&state.checks[tk][currentKid][taskId]){
+    state.stars[currentKid]=(state.stars[currentKid]||0)-task.stars;
+    delete state.checks[tk][currentKid][taskId];
+  }
+  saveAndSync();renderKidScreen();
+}
+
+function showCelebration(tasks,tk){
+  var box=document.getElementById('celebration-box');
+  var msg=CELEBRATE_MSGS[Math.floor(Math.random()*CELEBRATE_MSGS.length)];
+  var earned=tasks.reduce(function(a,t){return a+(state.checks[tk][currentKid][t.id]?t.stars:0);},0);
+  var pieces='';
+  for(var i=0;i<20;i++){
+    var c=CONFETTI_COLORS[i%CONFETTI_COLORS.length];
+    var left=Math.round(Math.random()*88)+4;var delay=(Math.random()*1.8).toFixed(2);var sz=Math.round(Math.random()*6)+5;
+    pieces+='<div class="confetti-piece" style="left:'+left+'%;background:'+c+';width:'+sz+'px;height:'+sz+'px;animation-delay:'+delay+'s;top:0"></div>';
+  }
+  box.style.display='block';
+  box.innerHTML='<div style="position:relative;overflow:hidden;min-height:110px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;margin-bottom:12px;text-align:center">'+pieces
+    +'<div style="font-size:36px;margin-bottom:6px">🎉</div>'
+    +'<div style="font-size:18px;font-weight:700;color:#166534">'+msg+'</div>'
+    +'<div style="font-size:13px;color:#555;margin-top:6px">Stars earned today: ⭐ '+earned+'</div></div>';
+}
+
+// ---- PARENT TABS ----
+function pTab(tab){
+  ['tasks','prizes','stars','manage','history','notif'].forEach(function(t){
+    document.getElementById('p-'+t).style.display=t===tab?'block':'none';
+    document.getElementById('ptab-'+t).className=t===tab?'btn btn-primary':'btn';
+  });
+  if(tab==='prizes') renderPrizeAdmin();
+  if(tab==='stars') renderStarAdmin();
+  if(tab==='tasks') renderTaskAdmin();
+  if(tab==='manage') renderManage();
+  if(tab==='history'){
+    var today_str=new Date().toISOString().split('T')[0];
+    document.getElementById('hist-date').value=today_str;
+    document.getElementById('hist-date').max=today_str;
+    document.getElementById('hist-day-content').style.display='none';
+  }
+  if(tab==='notif') renderNotifPanel();
+}
+
+document.querySelectorAll('input[name=ttype]').forEach(function(r){
+  r.addEventListener('change',function(){
+    var v=document.querySelector('input[name=ttype]:checked').value;
+    document.getElementById('rotate-opts').style.display=v==='rotate'?'block':'none';
+    document.getElementById('manual-assign').style.display='none';
+  });
+});
+document.querySelectorAll('input[name=rtype]').forEach(function(r){
+  r.addEventListener('change',function(){
+    document.getElementById('manual-assign').style.display=document.querySelector('input[name=rtype]:checked').value==='manual'?'block':'none';
+  });
+});
+document.querySelectorAll('input[name=unkid]').forEach(function(r){r.addEventListener('change',renderManage);});
+
+function addTask(){
+  var name=document.getElementById('task-name').value.trim();
+  if(!name){alert('Please enter a task name.');return;}
+  var icon=document.getElementById('task-icon').value.trim()||'✅';
+  var type=document.querySelector('input[name=ttype]:checked').value;
+  var rtype=type==='rotate'?document.querySelector('input[name=rtype]:checked').value:null;
+  var massign=rtype==='manual'?document.querySelector('input[name=massign]:checked').value:null;
+  var cat=document.getElementById('task-cat').value;
+  var days=document.querySelector('input[name=tdays]:checked').value;
+  var stars=parseInt(document.getElementById('task-stars').value)||1;
+  state.tasks.push({id:'t'+Date.now(),name:name,icon:icon,type:type,cat:cat,days:days,stars:stars,rotationType:rtype,currentAssignee:massign});
+  document.getElementById('task-name').value='';document.getElementById('task-icon').value='';
+  saveAndSync();renderTaskAdmin();
+}
+
+function renderTaskAdmin(){
+  var el=document.getElementById('task-list-admin');
+  if(!state.tasks.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:16px">No tasks yet</div>';return;}
+  el.innerHTML='<div style="font-size:12px;color:#aaa;margin-bottom:8px">Use ▲ ▼ arrows to reorder tasks</div>';
+  state.tasks.forEach(function(t,idx){
+    var who=t.type==='shared'?'Both':t.type==='rotate'?'Rotating ('+t.rotationType+')':t.type==='avyan'?'Avyan only':'Moksh only';
+    var isFirst=idx===0;var isLast=idx===state.tasks.length-1;
+    el.innerHTML+='<div class="task-row" id="trow-'+t.id+'">'
+      +'<div style="display:flex;flex-direction:column;gap:1px;margin-right:4px;flex-shrink:0">'
+      +'<button class="btn btn-sm" style="padding:2px 6px;font-size:11px;'+(isFirst?'opacity:0.3;cursor:default':'')
+      +'" onclick="moveTask(\''+t.id+'\',\'up\')" '+(isFirst?'disabled':'')+'>▲</button>'
+      +'<button class="btn btn-sm" style="padding:2px 6px;font-size:11px;'+(isLast?'opacity:0.3;cursor:default':'')
+      +'" onclick="moveTask(\''+t.id+'\',\'down\')" '+(isLast?'disabled':'')+'>▼</button>'
+      +'</div>'
+      +'<span style="font-size:20px;width:26px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div>'
+      +'<div style="font-size:12px;color:#888">'+who+' · '+(CAT_LABELS[t.cat]||t.cat)+' · '+t.days+' · ⭐'+t.stars+'</div></div>'
+      +(t.type==='rotate'&&t.rotationType==='manual'?'<select onchange="updateAssignee(\''+t.id+'\',this.value)" style="width:auto;padding:4px 8px;font-size:12px"><option value="avyan" '+(t.currentAssignee==='avyan'?'selected':'')+'>Avyan</option><option value="moksh" '+(t.currentAssignee==='moksh'?'selected':'')+'>Moksh</option></select>':'')
+      +'<button class="btn btn-danger btn-sm" onclick="deleteTask(\''+t.id+'\')">Delete</button></div>';
+  });
+}
+function moveTask(id,dir){
+  var idx=state.tasks.findIndex(function(t){return t.id===id;});
+  if(idx<0) return;
+  if(dir==='up'&&idx===0) return;
+  if(dir==='down'&&idx===state.tasks.length-1) return;
+  var swapIdx=dir==='up'?idx-1:idx+1;
+  var tmp=state.tasks[idx];state.tasks[idx]=state.tasks[swapIdx];state.tasks[swapIdx]=tmp;
+  saveAndSync();renderTaskAdmin();
+}
+function updateAssignee(id,val){var t=state.tasks.find(function(x){return x.id===id;});if(t){t.currentAssignee=val;saveAndSync();}}
+function deleteTask(id){if(!confirm('Delete this task?')) return;state.tasks=state.tasks.filter(function(t){return t.id!==id;});saveAndSync();renderTaskAdmin();}
+
+function addPrize(){
+  var name=document.getElementById('prize-name').value.trim();
+  if(!name){alert('Enter a prize description.');return;}
+  var starsA=parseInt(document.getElementById('prize-stars-avyan').value)||100;
+  var starsM=parseInt(document.getElementById('prize-stars-moksh').value)||100;
+  state.prizes.push({id:'p'+Date.now(),name:name,starsAvyan:starsA,starsMoksh:starsM});
+  document.getElementById('prize-name').value='';
+  document.getElementById('prize-stars-avyan').value='100';
+  document.getElementById('prize-stars-moksh').value='100';
+  saveAndSync();renderPrizeAdmin();
+}
+function getPrizeStars(p,kidId){
+  if(kidId==='avyan') return p.starsAvyan||p.stars||100;
+  return p.starsMoksh||p.stars||100;
+}
+function renderPrizeAdmin(){
+  var el=document.getElementById('prize-list-admin');
+  if(!state.prizes.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:16px">No prizes yet</div>';return;}
+  el.innerHTML='';
+  state.prizes.forEach(function(p){
+    var sa=p.starsAvyan||p.stars||100;
+    var sm=p.starsMoksh||p.stars||100;
+    el.innerHTML+='<div style="padding:12px 0;border-bottom:1px solid #f0f0ec">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+p.name+'</div></div>'
+      +'<button class="btn btn-danger btn-sm" onclick="deletePrize(\''+p.id+'\')">Delete</button></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div style="background:#f5f5f0;border-radius:8px;padding:8px;font-size:13px">'
+      +'<div style="color:#888;margin-bottom:4px">🦁 Avyan target</div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<input type="number" value="'+sa+'" min="1" style="width:80px" onchange="updatePrizeStars(\''+p.id+'\',\'avyan\',this.value)">'
+      +'<span style="font-size:12px;color:#888">stars</span></div></div>'
+      +'<div style="background:#f5f5f0;border-radius:8px;padding:8px;font-size:13px">'
+      +'<div style="color:#888;margin-bottom:4px">🐼 Moksh target</div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<input type="number" value="'+sm+'" min="1" style="width:80px" onchange="updatePrizeStars(\''+p.id+'\',\'moksh\',this.value)">'
+      +'<span style="font-size:12px;color:#888">stars</span></div></div>'
+      +'</div></div>';
+  });
+}
+function updatePrizeStars(prizeId,kidId,val){
+  var p=state.prizes.find(function(x){return x.id===prizeId;});
+  if(!p) return;
+  var n=parseInt(val)||100;
+  if(kidId==='avyan') p.starsAvyan=n; else p.starsMoksh=n;
+  saveAndSync();
+}
+function deletePrize(id){state.prizes=state.prizes.filter(function(p){return p.id!==id;});saveAndSync();renderPrizeAdmin();}
+
+function renderStarAdmin(){
+  var el=document.getElementById('star-bank-content');el.innerHTML='';
+  [{id:'avyan',name:'Avyan'},{id:'moksh',name:'Moksh'}].forEach(function(k){
+    var myStars=state.stars[k.id]||0;var av=state.avatars[k.id]||'🌟';
+    var prizeHTML='';
+    state.prizes.forEach(function(p){
+      var target=getPrizeStars(p,k.id);var pct=Math.min(100,Math.max(0,Math.round(myStars/target*100)));
+      prizeHTML+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+p.name+'</span><span>'+myStars+'/'+p.stars+' ⭐</span></div>'
+        +'<div class="progress-bar"><div class="progress-fill-g progress-fill" style="width:'+pct+'%"></div></div>'
+        +'<div style="font-size:12px;color:'+(pct>=100?'#166534':'#888')+';margin-top:3px">'+(pct>=100?'🎉 Ready to redeem!':(target-myStars)+' more stars to go')+'</div>'+(pct>=100?'<button class="btn btn-warn btn-sm" style="margin-top:4px" onclick="redeemPrize(\''+k.id+'\','+p.stars+',\''+p.name.replace(/'/g,"\\'")+'\')">🎁 Redeem (-'+p.stars+' stars)</button>':'')
+        +'</div>';
+    });
+    el.innerHTML+='<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+      +'<div style="font-size:30px">'+av+'</div>'
+      +'<div><div style="font-size:16px;font-weight:700">'+k.name+'</div>'
+      +'<div style="font-size:13px;color:#666">⭐ '+myStars+' stars &nbsp; 🔥 '+calcStreak(k.id)+'-day streak</div></div></div>'
+      +(prizeHTML||'<div style="font-size:13px;color:#aaa">No prizes set yet</div>')
+      +'<div class="sep"></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">'
+      +'<div><label style="font-size:12px;color:#666;font-weight:600">Add stars</label><br><input type="number" id="'+k.id+'-add" placeholder="amount" style="width:100px;margin-top:4px"></div>'
+      +'<button class="btn btn-success btn-sm" onclick="adjustStars(\''+k.id+'\',\'add\')">+ Add stars</button>'
+      +'<div><label style="font-size:12px;color:#666;font-weight:600">Redeem stars</label><br><input type="number" id="'+k.id+'-deduct" placeholder="amount" style="width:100px;margin-top:4px"></div>'
+      +'<button class="btn btn-danger btn-sm" onclick="adjustStars(\''+k.id+'\',\'deduct\')">− Redeem</button></div></div>';
+  });
+}
+function redeemPrize(kidId,stars,name){
+  if((state.stars[kidId]||0)>=stars){state.stars[kidId]=(state.stars[kidId]||0)-stars;saveAndSync();renderStarAdmin();renderHome();alert('🎁 '+name+' redeemed!\n−'+stars+' stars deducted.');}
+  else alert('Not enough stars yet!');
+}
+function adjustStars(kidId,dir){
+  var inp=document.getElementById(kidId+'-'+(dir==='add'?'add':'deduct'));
+  var amt=parseInt(inp.value)||0;if(amt<=0){alert('Enter a number first.');return;}
+  if(dir==='add') state.stars[kidId]=(state.stars[kidId]||0)+amt;
+  else state.stars[kidId]=(state.stars[kidId]||0)-amt;
+  inp.value='';saveAndSync();renderStarAdmin();renderHome();
+}
+
+function giveExtraCredit(dir){
+  var kidId=document.querySelector('input[name=extrakid]:checked').value;
+  var reason=document.getElementById('extra-reason').value.trim();
+  var stars=parseInt(document.getElementById('extra-stars').value)||5;
+  if(!reason){alert('Please enter a reason.');return;}
+  var isDeduct=dir==='deduct';
+  var tk=todayKey();
+  if(!state.extraCredits[tk]) state.extraCredits[tk]={};
+  if(!state.extraCredits[tk][kidId]) state.extraCredits[tk][kidId]=[];
+  if(state.stars[kidId]===undefined) state.stars[kidId]=0;
+  var actualChange=isDeduct?-stars:stars;
+  state.stars[kidId]=state.stars[kidId]+actualChange;
+  var entry={reason:reason,stars:actualChange,time:new Date().toISOString()};
+  state.extraCredits[tk][kidId].push(entry);
+  document.getElementById('extra-reason').value='';
+  saveAndSync();
+  renderManage();
+  renderHome();
+  var name=kidId==='avyan'?'Avyan':'Moksh';
+  if(isDeduct) alert('⚠️ '+name+' now has '+state.stars[kidId]+' stars.\nReason: '+reason);
+  else alert('🌟 '+name+' got +'+stars+' stars! Now has '+state.stars[kidId]+'.\nReason: '+reason);
+}
+
+function renderManage(){
+  var kidId=document.querySelector('input[name=unkid]:checked').value;
+  var tk=todayKey();
+  var checks=(state.checks[tk]&&state.checks[tk][kidId])||{};
+  var done=state.tasks.filter(function(t){return checks[t.id]&&taskActiveOnDate(t,today())&&(t.type==='shared'||t.type===kidId||t.type==='rotate');});
+  var el=document.getElementById('uncheck-list');
+  if(!done.length){el.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px">No completed tasks today for this kid.</div>';return;}
+  el.innerHTML='';
+  done.forEach(function(t){
+    el.innerHTML+='<div class="task-row"><span style="font-size:22px">'+(t.icon||'✅')+'</span>'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div><div style="font-size:12px;color:#888">⭐ '+t.stars+' stars</div></div>'
+      +'<button class="btn btn-warn btn-sm" onclick="parentUncheck(\''+kidId+'\',\''+t.id+'\')">Uncheck</button></div>';
+  });
+}
+function parentUncheck(kidId,taskId){
+  var tk=todayKey();
+  if(state.checks[tk]&&state.checks[tk][kidId]&&state.checks[tk][kidId][taskId]){
+    var task=state.tasks.find(function(t){return t.id===taskId;});
+    if(task) state.stars[kidId]=(state.stars[kidId]||0)-task.stars;
+    delete state.checks[tk][kidId][taskId];
+    saveAndSync();renderManage();
+  }
+}
+
+function giveStreakBonus(kidId){
+  var days=parseInt(document.getElementById('streak-days').value)||7;
+  var bonus=parseInt(document.getElementById('streak-bonus').value)||0;
+  if(!bonus){alert('Enter bonus stars first.');return;}
+  var streak=calcStreak(kidId);var name=kidId==='avyan'?'Avyan':'Moksh';
+  if(streak>=days){state.stars[kidId]=(state.stars[kidId]||0)+bonus;saveAndSync();alert('🔥 '+name+' has a '+streak+'-day streak!\n+'+bonus+' bonus stars awarded!');}
+  else alert(name+' has '+streak+' days (needs '+days+'). Keep going!');
+}
+
+// PARENT HISTORY EDITOR
+// Store current history context so onclick buttons don't need to pass strings
+var histContext={kidId:null,k:null};
+
+function loadHistoryDay(){
+  var kidId=document.querySelector('input[name=histkid]:checked').value;
+  var dateVal=document.getElementById('hist-date').value;
+  if(!dateVal){alert('Please select a date.');return;}
+  var parts=dateVal.split('-');
+  var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  var k=dateKey(d);
+  histContext.kidId=kidId;
+  histContext.k=k;
+  renderHistoryDay();
+}
+
+function renderHistoryDay(){
+  var kidId=histContext.kidId;
+  var k=histContext.k;
+  if(!kidId||!k) return;
+  if(!state.checks[k]) state.checks[k]={};
+  if(!state.checks[k][kidId]) state.checks[k][kidId]={};
+  if(!state.extraCredits[k]) state.extraCredits[k]={};
+  if(!state.extraCredits[k][kidId]) state.extraCredits[k][kidId]=[];
+
+  var parts=k.split('-');
+  var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  var tasks=getKidTasksOnDate(kidId,d);
+  var checks=state.checks[k][kidId];
+  var extras=state.extraCredits[k][kidId];
+  var name=kidId==='avyan'?'Avyan':'Moksh';
+  var dateLabel=DAYS[d.getDay()]+', '+MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
+  var starsEarned=tasks.reduce(function(a,t){return a+(checks[t.id]?t.stars:0);},0);
+  var extraStars=extras.reduce(function(a,e){return a+e.stars;},0);
+
+  var taskRows='';
+  tasks.forEach(function(t){
+    var checked=!!checks[t.id];
+    taskRows+='<div class="task-row">'
+      +'<input type="checkbox" '+(checked?'checked':'')+' data-tid="'+t.id+'" data-stars="'+t.stars+'" onchange="histToggleTask(this)">'
+      +'<span style="font-size:22px;width:28px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
+      +'<div style="flex:1;font-size:14px;'+(checked?'text-decoration:line-through;color:#bbb':'')+'">'+t.name+'</div>'
+      +'<span class="star-badge">⭐ '+t.stars+'</span></div>';
+  });
+
+  var extraRows='';
+  extras.forEach(function(e,i){
+    var isDeduct=e.stars<0;
+    extraRows+='<div class="task-row"><span style="font-size:22px">'+(isDeduct?'⚠️':'🌟')+'</span>'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+(isDeduct?'#991b1b':'#166534')+'">'+(isDeduct?'Deduction':'Extra credit')+'</div>'
+      +'<div style="font-size:12px;color:#666">'+e.reason+'</div></div>'
+      +'<span style="background:'+(isDeduct?'#fee2e2':'#fce7f3')+';color:'+(isDeduct?'#991b1b':'#9d174d')+';border-radius:6px;font-size:12px;padding:3px 8px;font-weight:600">'+(isDeduct?e.stars:'+'+e.stars)+' ⭐</span>'
+      +'<button class="btn btn-danger btn-sm" onclick="histDeleteExtra('+i+')">Remove</button></div>';
+  });
+
+  var el=document.getElementById('hist-day-content');
+  el.style.display='block';
+  el.innerHTML='<div class="card">'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">'+name+' — '+dateLabel+'</div>'
+    +'<div style="font-size:13px;color:#666;margin-bottom:12px">Task stars: ⭐ '+starsEarned+' &nbsp; Adjustments: '+(extraStars>=0?'+':'')+extraStars+' ⭐</div>'
+    +(tasks.length?taskRows:'<div style="color:#aaa;font-size:13px">No tasks active this day</div>')
+    +'<div class="sep"></div>'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">Adjustments this day</div>'
+    +(extraRows||'<div style="color:#aaa;font-size:13px;margin-bottom:10px">No adjustments this day</div>')
+    +'<div style="margin-top:12px;background:#f9fafb;border-radius:8px;padding:12px">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">Add to this day</div>'
+    +'<div class="form-row"><label>Reason</label><input type="text" id="hist-extra-reason" placeholder="e.g. Was very helpful at dinner"></div>'
+    +'<div class="form-row"><label>Stars</label><input type="number" id="hist-extra-stars" value="5" min="1" max="50" style="width:80px"></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn btn-success btn-sm" onclick="histAddExtra(false)">🌟 Give stars</button>'
+    +'<button class="btn btn-danger btn-sm" onclick="histAddExtra(true)">⚠️ Deduct stars (penalty)</button>'
+    +'</div></div></div>';
+}
+
+function histToggleTask(el){
+  var kidId=histContext.kidId; var k=histContext.k;
+  if(!kidId||!k) return;
+  var taskId=el.getAttribute('data-tid');
+  var taskStars=parseInt(el.getAttribute('data-stars'))||0;
+  var checked=el.checked;
+  if(!state.checks[k]) state.checks[k]={};
+  if(!state.checks[k][kidId]) state.checks[k][kidId]={};
+  if(checked&&!state.checks[k][kidId][taskId]){
+    state.stars[kidId]=(state.stars[kidId]||0)+taskStars;
+    state.checks[k][kidId][taskId]=true;
+  } else if(!checked&&state.checks[k][kidId][taskId]){
+    state.stars[kidId]=(state.stars[kidId]||0)-taskStars;
+    delete state.checks[k][kidId][taskId];
+  }
+  saveAndSync();renderHistoryDay();
+}
+
+function histAddExtra(isDeduct){
+  var kidId=histContext.kidId; var k=histContext.k;
+  if(!kidId||!k) return;
+  var reason=document.getElementById('hist-extra-reason').value.trim();
+  var stars=parseInt(document.getElementById('hist-extra-stars').value)||5;
+  if(!reason){alert('Please enter a reason.');return;}
+  if(!state.extraCredits[k]) state.extraCredits[k]={};
+  if(!state.extraCredits[k][kidId]) state.extraCredits[k][kidId]=[];
+  var currentStars2=state.stars[kidId]||0;
+  var actualChange2=isDeduct?-Math.abs(stars):Math.abs(stars);
+  state.stars[kidId]=currentStars2+actualChange2;
+  state.extraCredits[k][kidId].push({reason:reason,stars:actualChange2,time:new Date().toISOString()});
+  document.getElementById('hist-extra-reason').value='';
+  saveAndSync();renderHistoryDay();
+}
+
+function histDeleteExtra(idx){
+  var kidId=histContext.kidId; var k=histContext.k;
+  if(!kidId||!k) return;
+  if(!confirm('Remove this entry?')) return;
+  var e=state.extraCredits[k][kidId][idx];
+  if(e){
+    state.stars[kidId]=(state.stars[kidId]||0)-e.stars;
+  }
+  state.extraCredits[k][kidId].splice(idx,1);
+  saveAndSync();renderHistoryDay();
+}
+
+function renderNotifPanel(){
+  document.getElementById('notif-time').value=state.notif.time||'19:30';
+  document.getElementById('notif-msg').value=state.notif.msg||"Don't forget chores!";
+  updateNotifStatus();
+}
+function updateNotifStatus(){
+  var el=document.getElementById('notif-panel-status');if(!el) return;
+  var perm=typeof Notification!=='undefined'?Notification.permission:'unavailable';
+  el.textContent=state.notif.enabled?'✅ Reminder on at '+state.notif.time+' (permission: '+perm+')':'Reminder is off.';
+}
+function enableNotif(){
+  state.notif.time=document.getElementById('notif-time').value||'19:30';
+  state.notif.msg=document.getElementById('notif-msg').value||"Don't forget chores!";
+  state.notif.enabled=true;saveAndSync();
+  if(typeof Notification!=='undefined'&&Notification.permission==='default'){
+    Notification.requestPermission().then(function(){scheduleNotif();updateNotifStatus();});
+  } else {scheduleNotif();updateNotifStatus();}
+}
+function disableNotif(){
+  state.notif.enabled=false;saveAndSync();
+  if(notifTimer){clearTimeout(notifTimer);notifTimer=null;}
+  updateNotifStatus();
+}
+function testNotif(){
+  if(typeof Notification==='undefined'){alert('Notifications not supported.');return;}
+  if(Notification.permission==='granted') new Notification('Chore Chart 🌟',{body:state.notif.msg});
+  else if(Notification.permission==='default') Notification.requestPermission().then(function(p){if(p==='granted') new Notification('Chore Chart 🌟',{body:'Test! ⭐'});});
+  else alert('Notifications blocked.\n\nWindows Chrome: Click the lock icon → Notifications → Allow.\nFire Tablet Silk: Settings → Site Settings → Notifications → Allow.');
+}
+function scheduleNotif(){
+  if(notifTimer){clearTimeout(notifTimer);notifTimer=null;}
+  if(!state.notif.enabled||typeof Notification==='undefined'||Notification.permission!=='granted') return;
+  var parts=(state.notif.time||'19:30').split(':');
+  var h=parseInt(parts[0]);var m=parseInt(parts[1]);
+  var now=new Date();var fire=new Date();fire.setHours(h,m,0,0);
+  if(fire<=now) fire.setDate(fire.getDate()+1);
+  notifTimer=setTimeout(function(){new Notification('Chore Chart 🌟',{body:state.notif.msg});scheduleNotif();},fire-now);
+}
+
+function checkPasscode(){
+  if(!state.passcode||state.passcode===''){goTo('s-parent');return;}
+  var entered=prompt('Enter parent passcode:');
+  if(entered===null) return;
+  if(String(entered)===String(state.passcode)) goTo('s-parent');
+  else alert('Wrong passcode. Try again.');
+}
+function savePasscode(){
+  var val=document.getElementById('new-passcode').value.trim();
+  if(val!==''&&(isNaN(val)||val.length>6)){alert('Please enter up to 6 digits, or leave blank.');return;}
+  state.passcode=val;
+  saveAndSync();
+  document.getElementById('passcode-status').textContent=val===''?'Passcode removed.':'Passcode set to: '+val;
+  document.getElementById('new-passcode').value='';
+}
+loadLocal();
+renderHome();
+pTab('tasks');
+renderTaskAdmin();
+scheduleNotif();
+loadFromSheets(function(){
+  renderHome();
+  renderTaskAdmin();
+});
+</script>
+</body>
+</html>
