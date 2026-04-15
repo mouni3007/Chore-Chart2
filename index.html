@@ -170,7 +170,16 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
     <div class="card">
       <div class="section-title" style="margin-bottom:12px">Add new task</div>
       <div class="form-row"><label>Task name</label><input type="text" id="task-name" placeholder="e.g. Make bed"></div>
-      <div class="form-row"><label>Icon (paste any emoji)</label><input type="text" id="task-icon" placeholder="e.g. 🛏️" style="width:90px"></div>
+      <div class="form-row"><label>Icon</label>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="text" id="task-icon" placeholder="paste emoji" style="width:80px">
+          <button class="btn btn-sm" type="button" onclick="toggleEmojiPicker('task-icon')">😊 Pick</button>
+        </div>
+        <div id="emoji-picker" style="display:none;margin-top:8px;background:#f5f5f0;border:1px solid #e0e0d8;border-radius:8px;padding:10px;max-width:320px">
+          <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700">TAP TO SELECT</div>
+          <div id="emoji-grid" style="display:flex;flex-wrap:wrap;gap:4px;font-size:22px;line-height:1.4"></div>
+        </div>
+      </div>
       <div class="form-row"><label>Who does it</label>
         <div class="radio-group">
           <label class="radio-opt"><input type="radio" name="ttype" value="shared" checked> Both</label>
@@ -313,6 +322,45 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
 </div>
 
 </div>
+
+<!-- EDIT TASK MODAL -->
+<div id="edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:20px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px">Edit task</div>
+    <div class="form-row"><label>Task name</label><input type="text" id="edit-task-name" placeholder="Task name"></div>
+    <div class="form-row"><label>Icon</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="text" id="edit-task-icon" placeholder="paste emoji" style="width:80px">
+        <button class="btn btn-sm" type="button" onclick="toggleEmojiPicker('edit-task-icon')">😊 Pick</button>
+      </div>
+      <div id="emoji-picker-edit" style="display:none;margin-top:8px;background:#f5f5f0;border:1px solid #e0e0d8;border-radius:8px;padding:10px;max-width:320px">
+        <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700">TAP TO SELECT</div>
+        <div id="emoji-grid-edit" style="display:flex;flex-wrap:wrap;gap:4px;font-size:22px;line-height:1.4"></div>
+      </div>
+    </div>
+    <div class="form-row"><label>Stars</label><input type="number" id="edit-task-stars" min="1" max="20" style="width:80px"></div>
+    <div class="form-row"><label>Category</label>
+      <select id="edit-task-cat">
+        <option value="morning">Morning</option>
+        <option value="afterschool">After school</option>
+        <option value="anytime">Anytime</option>
+        <option value="weekend">Weekend</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Days active</label>
+      <div class="radio-group">
+        <label class="radio-opt"><input type="radio" name="edit-tdays" value="daily"> Every day</label>
+        <label class="radio-opt"><input type="radio" name="edit-tdays" value="weekday"> Mon–Fri</label>
+        <label class="radio-opt"><input type="radio" name="edit-tdays" value="weekend"> Weekends</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" onclick="saveEditTask()">Save changes</button>
+      <button class="btn" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var SCRIPT_URL='https://script.google.com/macros/s/AKfycbwW8tg5ss09J4_In9rmt1wV-SKFjnBxcF5prF0tG1I-uvoFqIdiQeiWpIWKXmv-Vw4fuA/exec';
 var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -479,7 +527,9 @@ function calcStreak(kidId){
     var tasks=getKidTasksOnDate(kidId,dt);
     if(!tasks.length){d.setDate(d.getDate()-1);continue;}
     var checks=state.checks[k]&&state.checks[k][kidId];
-    if(tasks.filter(function(t){return checks&&checks[t.id];}).length===tasks.length) streak++;
+    // Streak requires ALL tasks answered 'yes' (no 'no', no unanswered)
+    var allYes=tasks.every(function(t){return checks&&checks[t.id]==='yes';});
+    if(allYes) streak++;
     else break;
     d.setDate(d.getDate()-1);
   }
@@ -501,7 +551,7 @@ function renderHome(){
     var av=state.avatars[k.id]||'🌟';
     var tasks=getKidTasksOnDate(k.id,d);
     var tk=todayKey();
-    var done=tasks.filter(function(t){return state.checks[tk]&&state.checks[tk][k.id]&&state.checks[tk][k.id][t.id];}).length;
+    var done=tasks.filter(function(t){return state.checks[tk]&&state.checks[tk][k.id]&&state.checks[tk][k.id][t.id]==='yes';}).length;
     var pct=tasks.length?Math.round(done/tasks.length*100):0;
     el.innerHTML+='<button class="big-kid-btn" onclick="openKid(\''+k.id+'\')">'
       +'<div style="font-size:32px;width:54px;height:54px;border-radius:50%;background:#f0f0ec;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+av+'</div>'
@@ -532,7 +582,7 @@ function renderKidScreen(){
   var tasks=getKidTasksOnDate(currentKid,vd);
   if(!state.checks[vk]) state.checks[vk]={};
   if(!state.checks[vk][currentKid]) state.checks[vk][currentKid]={};
-  var done=tasks.filter(function(t){return state.checks[vk][currentKid][t.id];}).length;
+  var done=tasks.filter(function(t){return state.checks[vk][currentKid][t.id]==='yes';}).length;
   var streak=calcStreak(currentKid);
   document.getElementById('k-done').textContent=done;
   document.getElementById('k-total').textContent=tasks.length;
@@ -560,17 +610,25 @@ function renderKidScreen(){
     var groups={};var order=['morning','afterschool','anytime','weekend'];
     tasks.forEach(function(t){var c=t.cat||'anytime';if(!groups[c])groups[c]=[];groups[c].push(t);});
     order.filter(function(c){return groups[c]&&groups[c].length;}).forEach(function(c){
-      var doneCat=groups[c].filter(function(t){return state.checks[vk][currentKid][t.id];}).length;
+      var doneCat=groups[c].filter(function(t){return state.checks[vk][currentKid][t.id]==='yes';}).length;
       var rows='';
       groups[c].forEach(function(t){
-        var checked=!!state.checks[vk][currentKid][t.id];
-        var canCheck=isViewingToday();
-        rows+='<div class="task-row">'
-          +'<span style="font-size:24px;width:30px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
-          +(canCheck?'<input type="checkbox" '+(checked?'checked':'')+' onchange="toggleTask(\''+t.id+'\',this.checked)">'
-            :'<span style="font-size:20px;flex-shrink:0">'+(checked?'☑️':'⬜')+'</span>')
-          +'<div style="flex:1;font-size:15px;color:#1a1a1a;'+(checked?'text-decoration:line-through;color:#bbb':'')+'">'+t.name+'</div>'
-          +'<span class="star-badge">⭐ '+t.stars+'</span></div>';
+        var tstate=state.checks[vk][currentKid][t.id];
+        var isYes=tstate==='yes';
+        var isNo=tstate==='no';
+        var canAct=isViewingToday();
+        var strikeStyle=isYes||isNo?'text-decoration:line-through;color:#bbb':'';
+        rows+='<div class="task-row" style="gap:8px;flex-wrap:wrap">'
+          +'<span style="font-size:22px;width:28px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
+          +'<div style="flex:1;font-size:15px;'+strikeStyle+'">'+t.name+'</div>'
+          +'<span class="star-badge">⭐ '+t.stars+'</span>';
+        if(canAct){
+          rows+='<button onclick="setTaskState(''+t.id+'','yes')" style="padding:5px 12px;border-radius:6px;border:1.5px solid '+(isYes?'#16a34a':'#ccc')+';background:'+(isYes?'#dcfce7':'#fff')+';color:'+(isYes?'#166534':'#555')+';font-size:13px;font-weight:700;cursor:pointer;font-family:Arial">✓ Yes</button>'
+          +'<button onclick="setTaskState(''+t.id+'','no')" style="padding:5px 12px;border-radius:6px;border:1.5px solid '+(isNo?'#dc2626':'#ccc')+';background:'+(isNo?'#fee2e2':'#fff')+';color:'+(isNo?'#991b1b':'#555')+';font-size:13px;font-weight:700;cursor:pointer;font-family:Arial">✗ No</button>';
+        } else {
+          rows+='<span style="font-size:20px">'+(isYes?'✅':isNo?'❌':'⬜')+'</span>';
+        }
+        rows+='</div>';
       });
       sectionsEl.innerHTML+='<div class="card">'
         +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
@@ -613,7 +671,7 @@ function renderKidScreen(){
     });
   }
 
-  if(isViewingToday()&&tasks.length>0&&done===tasks.length) showCelebration(tasks,vk);
+  if(isViewingToday()&&tasks.length>0&&done===tasks.length&&tasks.every(function(t){return state.checks[vk][currentKid][t.id]==='yes';})) showCelebration(tasks,vk);
   else document.getElementById('celebration-box').style.display='none';
 }
 
@@ -660,22 +718,31 @@ function selectCalDay(d){
   renderKidScreen();
 }
 
-function toggleTask(taskId,checked){
+function setTaskState(taskId,newState){
   if(!isViewingToday()) return;
   var tk=todayKey();
   if(!state.checks[tk]) state.checks[tk]={};
   if(!state.checks[tk][currentKid]) state.checks[tk][currentKid]={};
   var task=state.tasks.find(function(t){return t.id===taskId;});
   if(!task) return;
-  if(checked&&!state.checks[tk][currentKid][taskId]){
-    state.stars[currentKid]=(state.stars[currentKid]||0)+task.stars;
-    state.checks[tk][currentKid][taskId]=true;
-  } else if(!checked&&state.checks[tk][currentKid][taskId]){
-    state.stars[currentKid]=(state.stars[currentKid]||0)-task.stars;
+  var prev=state.checks[tk][currentKid][taskId];
+  // Tapping same button again = undo (clear answer)
+  if(prev===newState){
+    if(prev==='yes') state.stars[currentKid]=state.stars[currentKid]-task.stars;
+    if(prev==='no')  state.stars[currentKid]=state.stars[currentKid]+task.stars;
     delete state.checks[tk][currentKid][taskId];
+    saveAndSync();renderKidScreen();return;
   }
+  // Reverse previous state first
+  if(prev==='yes') state.stars[currentKid]=state.stars[currentKid]-task.stars;
+  if(prev==='no') state.stars[currentKid]=state.stars[currentKid]+task.stars;
+  // Apply new state
+  if(newState==='yes') state.stars[currentKid]=state.stars[currentKid]+task.stars;
+  if(newState==='no') state.stars[currentKid]=state.stars[currentKid]-task.stars;
+  state.checks[tk][currentKid][taskId]=newState;
   saveAndSync();renderKidScreen();
 }
+function toggleTask(taskId,checked){ setTaskState(taskId,checked?'yes':'no'); }
 
 function showCelebration(tasks,tk){
   var box=document.getElementById('celebration-box');
@@ -760,7 +827,9 @@ function renderTaskAdmin(){
       +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div>'
       +'<div style="font-size:12px;color:#888">'+who+' · '+(CAT_LABELS[t.cat]||t.cat)+' · '+t.days+' · ⭐'+t.stars+'</div></div>'
       +(t.type==='rotate'&&t.rotationType==='manual'?'<select onchange="updateAssignee(\''+t.id+'\',this.value)" style="width:auto;padding:4px 8px;font-size:12px"><option value="avyan" '+(t.currentAssignee==='avyan'?'selected':'')+'>Avyan</option><option value="moksh" '+(t.currentAssignee==='moksh'?'selected':'')+'>Moksh</option></select>':'')
-      +'<button class="btn btn-danger btn-sm" onclick="deleteTask(\''+t.id+'\')">Delete</button></div>';
+      +'<button class="btn btn-primary btn-sm" style="margin-right:4px" onclick="editTask(\'\'+t.id+\'\')">Edit</button>'
+      +'<button class="btn btn-danger btn-sm" onclick=+'<button class="btn btn-primary btn-sm" onclick="editTask(\\\''+t.id+'\\\')"  >Edit</button>'
+      +"deleteTask(\''+t.id+'\')">Delete</button></div>';
   });
 }
 function moveTask(id,dir){
@@ -888,21 +957,29 @@ function renderManage(){
   var kidId=document.querySelector('input[name=unkid]:checked').value;
   var tk=todayKey();
   var checks=(state.checks[tk]&&state.checks[tk][kidId])||{};
-  var done=state.tasks.filter(function(t){return checks[t.id]&&taskActiveOnDate(t,today())&&(t.type==='shared'||t.type===kidId||t.type==='rotate');});
+  var answered=state.tasks.filter(function(t){
+    return (checks[t.id]==='yes'||checks[t.id]==='no')&&taskActiveOnDate(t,today())&&(t.type==='shared'||t.type===kidId||t.type==='rotate');
+  });
   var el=document.getElementById('uncheck-list');
-  if(!done.length){el.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px">No completed tasks today for this kid.</div>';return;}
+  if(!answered.length){el.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px">No answered tasks today for this kid.</div>';return;}
   el.innerHTML='';
-  done.forEach(function(t){
-    el.innerHTML+='<div class="task-row"><span style="font-size:22px">'+(t.icon||'✅')+'</span>'
-      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div><div style="font-size:12px;color:#888">⭐ '+t.stars+' stars</div></div>'
-      +'<button class="btn btn-warn btn-sm" onclick="parentUncheck(\''+kidId+'\',\''+t.id+'\')">Uncheck</button></div>';
+  answered.forEach(function(t){
+    var ans=checks[t.id];var isYes=ans==='yes';
+    el.innerHTML+='<div class="task-row"><span style="font-size:22px">'+(isYes?'✅':'❌')+'</span>'
+      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div>'
+      +'<div style="font-size:12px;color:'+(isYes?'#166534':'#991b1b')+'">'+(isYes?'+':'-')+t.stars+' stars ('+ans+')</div></div>'
+      +'<button class="btn btn-warn btn-sm" onclick="parentUncheck(\"'+kidId+'\",\"'+t.id+'\")"  >Undo</button></div>';
   });
 }
 function parentUncheck(kidId,taskId){
   var tk=todayKey();
   if(state.checks[tk]&&state.checks[tk][kidId]&&state.checks[tk][kidId][taskId]){
     var task=state.tasks.find(function(t){return t.id===taskId;});
-    if(task) state.stars[kidId]=(state.stars[kidId]||0)-task.stars;
+    var ans=state.checks[tk][kidId][taskId];
+    if(task){
+      if(ans==='yes') state.stars[kidId]=(state.stars[kidId]||0)-task.stars;
+      if(ans==='no')  state.stars[kidId]=(state.stars[kidId]||0)+task.stars;
+    }
     delete state.checks[tk][kidId][taskId];
     saveAndSync();renderManage();
   }
@@ -1091,6 +1168,118 @@ function savePasscode(){
   document.getElementById('passcode-status').textContent=val===''?'Passcode removed.':'Passcode set to: '+val;
   document.getElementById('new-passcode').value='';
 }
+var EMOJIS=['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','💟','❣️','💔','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💨','🕳️','💬','💭','💤','👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁️','👅','👄','🫦','🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🍕','🍔','🌮','🌯','🍜','🍣','🎂','🍩','🍪','🍫','🍬','🍭','🍦','🥛','🥤','🧃','☕','🍵','🥛','🍺','🌍','🌎','🌏','⭐','🌟','💫','✨','🌈','☀️','🌤️','⛅','🌦️','🌧️','⛈️','🌩️','🌪️','❄️','☃️','⛄','🌊','🔥','💧','🌱','🌲','🌳','🌴','🌵','🌾','🍀','🍁','🍂','🍃','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🪳','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🐿️','🦔','⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🎣','🤿','🎽','🎿','🛷','🥌','🏆','🥇','🥈','🥉','🏅','🎖️','🎗️','🎫','🎟️','🎪','🎭','🎨','🖼️','🎰','🎲','🎯','🎳','🎮','🎸','🎹','🎺','🎻','🥁','🪘','🎷','🎵','🎶','🎙️','🎚️','🎛️','📻','📺','📷','📸','📹','🎥','📽️','🎬','📱','💻','⌨️','🖥️','🖨️','🖱️','🗜️','💾','💿','📀','📼','📟','📠','☎️','📞','📡','🔋','🔌','💡','🔦','🕯️','🪔','🧯','🛒','💰','💵','💳','📈','📉','📊','📋','📌','📍','✂️','🗃️','🗑️','🔒','🔓','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🛡️','🔧','🔩','⚙️','🗜️','🔗','⛓️','🧲','🪜','🧰','🪣','🧲','💊','🩺','🩹','🧬','🔬','🔭','📡','🚗','🚕','🚙','🚌','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛹','🛼','🚏','⛽','🚦','🚥','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🏕️','🏞️','🎠','🎡','🎢','🛤️','🛣️','🗺️','🗾','🧭','🏔️','⛰️','🌋','🗻','🏜️','🏝️','🏖️','🏗️','🧱','🪨','🪵','🛖'];
+
+function toggleEmojiPicker(targetId){
+  var pickerId=targetId==='edit-task-icon'?'emoji-picker-edit':'emoji-picker';
+  var gridId=targetId==='edit-task-icon'?'emoji-grid-edit':'emoji-grid';
+  var picker=document.getElementById(pickerId);
+  var grid=document.getElementById(gridId);
+  if(picker.style.display==='none'){
+    grid.innerHTML='';
+    EMOJIS.forEach(function(e){
+      var span=document.createElement('span');
+      span.textContent=e;
+      span.style.cursor='pointer';
+      span.style.padding='2px';
+      span.style.borderRadius='4px';
+      span.onclick=function(){
+        document.getElementById(targetId).value=e;
+        picker.style.display='none';
+      };
+      span.onmouseover=function(){this.style.background='#e0e0d8';};
+      span.onmouseout=function(){this.style.background='';};
+      grid.appendChild(span);
+    });
+    picker.style.display='block';
+  } else {
+    picker.style.display='none';
+  }
+}
+
+var editingTaskId=null;
+function editTask(id){
+  var t=state.tasks.find(function(x){return x.id===id;});
+  if(!t) return;
+  editingTaskId=id;
+  document.getElementById('edit-task-name').value=t.name||'';
+  document.getElementById('edit-task-icon').value=t.icon||'';
+  document.getElementById('edit-task-stars').value=t.stars||1;
+  document.getElementById('edit-task-cat').value=t.cat||'anytime';
+  var dayRadios=document.querySelectorAll('input[name="edit-tdays"]');
+  dayRadios.forEach(function(r){r.checked=r.value===(t.days||'daily');});
+  document.getElementById('edit-modal').style.display='flex';
+}
+function closeEditModal(){
+  document.getElementById('edit-modal').style.display='none';
+  document.getElementById('emoji-picker-edit').style.display='none';
+  editingTaskId=null;
+}
+function saveEditTask(){
+  if(!editingTaskId) return;
+  var t=state.tasks.find(function(x){return x.id===editingTaskId;});
+  if(!t) return;
+  var name=document.getElementById('edit-task-name').value.trim();
+  if(!name){alert('Please enter a task name.');return;}
+  t.name=name;
+  t.icon=document.getElementById('edit-task-icon').value.trim()||t.icon||'✅';
+  t.stars=parseInt(document.getElementById('edit-task-stars').value)||1;
+  t.cat=document.getElementById('edit-task-cat').value;
+  var dayRadio=document.querySelector('input[name="edit-tdays"]:checked');
+  if(dayRadio) t.days=dayRadio.value;
+  closeEditModal();
+  saveAndSync();renderTaskAdmin();
+}
+
+
+function editTask(id){
+  var t=state.tasks.find(function(x){return x.id===id;});
+  if(!t) return;
+  var el=document.getElementById('trow-'+id);
+  if(!el) return;
+  el.innerHTML='<div style="padding:10px;background:#f9fafb;border-radius:8px;width:100%">'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+    +'<input id="et-name-'+id+'" type="text" value="'+t.name.replace(/"/g,"'")+'" style="flex:1;min-width:150px" placeholder="Task name">'
+    +'<input id="et-icon-'+id+'" type="text" value="'+(t.icon||'')+'" style="width:55px;text-align:center" placeholder="🎯">'
+    +'<button class="btn btn-sm" onclick="showEmojiPicker(''+id+'')" style="padding:5px 9px">😀 Pick</button>'
+    +'<input id="et-stars-'+id+'" type="number" value="'+t.stars+'" min="1" max="20" style="width:60px" title="Stars">'
+    +'</div>'
+    +'<div id="ep-'+id+'" style="display:none;background:#fff;border:1px solid #e0e0d8;border-radius:8px;padding:8px;margin-bottom:8px;max-height:150px;overflow-y:auto;font-size:24px;line-height:2;letter-spacing:2px"></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-primary btn-sm" onclick="saveEditTask(''+id+'')">✓ Save</button>'
+    +'<button class="btn btn-sm" onclick="renderTaskAdmin()">Cancel</button>'
+    +'</div>'
+    +'</div>';
+}
+function saveEditTask(id){
+  var t=state.tasks.find(function(x){return x.id===id;});if(!t) return;
+  var name=document.getElementById('et-name-'+id).value.trim();
+  var icon=document.getElementById('et-icon-'+id).value.trim();
+  var stars=parseInt(document.getElementById('et-stars-'+id).value)||1;
+  if(!name){alert('Task name cannot be empty.');return;}
+  t.name=name;t.icon=icon||t.icon||'✅';t.stars=stars;
+  saveAndSync();renderTaskAdmin();
+}
+var EMOJIS=['🥛','🧴','🍱','💧','🎒','📁','🙏','💤','💩','👕','📺','🪷','🛏️','🧹','🍽️','📚','🎯','⭐','🌟','🏆','💪','🎉','❤️','🌈','🌞','🌙','🌺','🌸','🌻','🦁','🐯','🐶','🐱','🐸','🎵','🎨','✏️','📝','🏠','🎂','🍕','🍦','🍪','🎁','🎈','🌍','💎','🔥','⚡','🌊','🍀','🦋','🧼','🪥','👟','🚿','🏃'];
+function showEmojiPicker(id){
+  var picker=document.getElementById('ep-'+id);
+  if(!picker) return;
+  if(picker.style.display!=='none'){picker.style.display='none';return;}
+  if(!picker.hasChildNodes()){
+    EMOJIS.forEach(function(e){
+      var sp=document.createElement('span');
+      sp.textContent=e;sp.style.cursor='pointer';sp.title=e;
+      sp.onclick=function(){
+        var inp=document.getElementById('et-icon-'+id);
+        if(inp) inp.value=e;
+        picker.style.display='none';
+      };
+      picker.appendChild(sp);
+    });
+  }
+  picker.style.display='block';
+}
+
 loadLocal();
 renderHome();
 pTab('tasks');
