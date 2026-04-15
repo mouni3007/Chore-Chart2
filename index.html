@@ -160,8 +160,7 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
   <div class="nav-bar">
     <button class="btn" id="ptab-tasks" onclick="pTab('tasks')">Tasks</button>
     <button class="btn" id="ptab-prizes" onclick="pTab('prizes')">Prizes</button>
-    <button class="btn" id="ptab-stars" onclick="pTab('stars')">Stars</button>
-    <button class="btn" id="ptab-manage" onclick="pTab('manage')">Manage</button>
+        <button class="btn" id="ptab-manage" onclick="pTab('manage')">Manage</button>
     <button class="btn" id="ptab-history" onclick="pTab('history')">History</button>
     <button class="btn" id="ptab-notif" onclick="pTab('notif')">Reminders</button>
   </div>
@@ -236,7 +235,6 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
     <div class="card"><div class="section-title">Current prizes</div><div id="prize-list-admin"></div></div>
   </div>
 
-  <div id="p-stars" style="display:none"><div id="star-bank-content"></div></div>
 
   <div id="p-manage" style="display:none">
     <div class="card">
@@ -771,12 +769,13 @@ function showCelebration(tasks,tk){
 
 // ---- PARENT TABS ----
 function pTab(tab){
-  ['tasks','prizes','stars','manage','history','notif'].forEach(function(t){
-    document.getElementById('p-'+t).style.display=t===tab?'block':'none';
-    document.getElementById('ptab-'+t).className=t===tab?'btn btn-primary':'btn';
+  ['tasks','prizes','manage','history','notif'].forEach(function(t){
+    var el=document.getElementById('p-'+t);
+    var btn=document.getElementById('ptab-'+t);
+    if(el) el.style.display=t===tab?'block':'none';
+    if(btn) btn.className=t===tab?'btn btn-primary':'btn';
   });
   if(tab==='prizes') renderPrizeAdmin();
-  if(tab==='stars') renderStarAdmin();
   if(tab==='tasks') renderTaskAdmin();
   if(tab==='manage') renderManage();
   if(tab==='history'){
@@ -916,27 +915,90 @@ function getPrizeStars(p,kidId){
 }
 function renderPrizeAdmin(){
   var el=document.getElementById('prize-list-admin');
-  if(!state.prizes.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:16px">No prizes yet</div>';return;}
   el.innerHTML='';
+
+  // Star balances for both kids at top
+  var kids=[{id:'avyan',name:'Avyan'},{id:'moksh',name:'Moksh'}];
+  var balDiv=document.createElement('div');
+  balDiv.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px';
+  kids.forEach(function(k){
+    var myStars=state.stars[k.id]||0;
+    var av=state.avatars[k.id]||'🌟';
+    var card=document.createElement('div');
+    card.style.cssText='background:#f5f5f0;border-radius:10px;padding:14px;text-align:center';
+    card.innerHTML='<div style="font-size:28px">'+av+'</div>'
+      +'<div style="font-size:15px;font-weight:700;margin-top:4px">'+k.name+'</div>'
+      +'<div style="font-size:22px;font-weight:700;color:#1a1a1a;margin:4px 0">⭐ '+myStars+'</div>'
+      +'<div style="font-size:12px;color:#888">🔥 '+calcStreak(k.id)+'-day streak</div>';
+    // Manual adjust
+    var adjRow=document.createElement('div');
+    adjRow.style.cssText='display:flex;gap:4px;margin-top:8px;justify-content:center';
+    var addInp=document.createElement('input');
+    addInp.type='number';addInp.placeholder='Stars';addInp.style.cssText='width:70px;padding:4px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center';
+    addInp.id='adj-'+k.id;
+    var addBtn=document.createElement('button');
+    addBtn.className='btn btn-success btn-sm';addBtn.textContent='+ Add';
+    (function(kid){addBtn.onclick=function(){adjustStars(kid,'add');};})(k.id);
+    var remBtn=document.createElement('button');
+    remBtn.className='btn btn-danger btn-sm';remBtn.textContent='- Remove';
+    (function(kid){remBtn.onclick=function(){adjustStars(kid,'deduct');};})(k.id);
+    adjRow.appendChild(addInp);adjRow.appendChild(addBtn);adjRow.appendChild(remBtn);
+    card.appendChild(adjRow);
+    balDiv.appendChild(card);
+  });
+  el.appendChild(balDiv);
+
+  // Prize list with progress for both kids
+  if(!state.prizes.length){
+    var empty=document.createElement('div');
+    empty.style.cssText='color:#aaa;font-size:14px;text-align:center;padding:16px';
+    empty.textContent='No prizes yet — add one above';
+    el.appendChild(empty);
+    return;
+  }
   state.prizes.forEach(function(p){
-    var sa=p.starsAvyan||p.stars||100;
-    var sm=p.starsMoksh||p.stars||100;
-    el.innerHTML+='<div style="padding:12px 0;border-bottom:1px solid #f0f0ec">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
-      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+p.name+'</div></div>'
-      +'<button class="btn btn-danger btn-sm" onclick="deletePrize(\''+p.id+'\')">Delete</button></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-      +'<div style="background:#f5f5f0;border-radius:8px;padding:8px;font-size:13px">'
-      +'<div style="color:#888;margin-bottom:4px">🦁 Avyan target</div>'
-      +'<div style="display:flex;align-items:center;gap:6px">'
-      +'<input type="number" value="'+sa+'" min="1" style="width:80px" onchange="updatePrizeStars(\''+p.id+'\',\'avyan\',this.value)">'
-      +'<span style="font-size:12px;color:#888">stars</span></div></div>'
-      +'<div style="background:#f5f5f0;border-radius:8px;padding:8px;font-size:13px">'
-      +'<div style="color:#888;margin-bottom:4px">🐼 Moksh target</div>'
-      +'<div style="display:flex;align-items:center;gap:6px">'
-      +'<input type="number" value="'+sm+'" min="1" style="width:80px" onchange="updatePrizeStars(\''+p.id+'\',\'moksh\',this.value)">'
-      +'<span style="font-size:12px;color:#888">stars</span></div></div>'
-      +'</div></div>';
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border:1px solid #e0e0d8;border-radius:12px;padding:14px;margin-bottom:10px';
+    var header=document.createElement('div');
+    header.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+    var title=document.createElement('span');
+    title.style.cssText='font-size:15px;font-weight:700';title.textContent=p.name;
+    var delBtn=document.createElement('button');
+    delBtn.className='btn btn-danger btn-sm';delBtn.textContent='Delete';
+    (function(pid){delBtn.onclick=function(){deletePrize(pid);};})(p.id);
+    header.appendChild(title);header.appendChild(delBtn);
+    card.appendChild(header);
+
+    // Per-kid targets (editable) + progress + redeem
+    kids.forEach(function(k){
+      var myStars=state.stars[k.id]||0;
+      var target=getPrizeStars(p,k.id);
+      var pct=Math.min(100,Math.max(0,Math.round(myStars/target*100)));
+      var remaining=target-myStars;
+      var av=state.avatars[k.id]||'🌟';
+      var kidRow=document.createElement('div');
+      kidRow.style.cssText='margin-bottom:10px;padding:10px;background:#f9fafb;border-radius:8px';
+      kidRow.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+        +'<span style="font-size:14px;font-weight:700">'+av+' '+k.name+'</span>'
+        +'<span style="font-size:12px;color:#666">⭐ '+myStars+' / '+target+' stars</span>'
+        +'</div>'
+        +'<div style="height:10px;background:#e5e5e0;border-radius:99px;overflow:hidden;margin-bottom:4px">'
+          +'<div style="height:100%;background:#16a34a;border-radius:99px;width:'+pct+'%"></div>'
+        +'</div>'
+        +'<div style="font-size:12px;color:'+(pct>=100?'#16a34a':'#888')+';margin-bottom:4px">'
+          +(pct>=100?'🎉 Ready to redeem!':remaining+' more star'+(remaining===1?'':'s')+' to go')
+        +'</div>';
+      if(pct>=100){
+        var redeemBtn=document.createElement('button');
+        redeemBtn.className='btn btn-warn btn-sm';
+        redeemBtn.style.marginTop='6px';
+        redeemBtn.textContent='🎁 Redeem for '+k.name+' (-'+target+' stars)';
+        (function(kid,tgt,pname){redeemBtn.onclick=function(){redeemPrize(kid,tgt,pname);};})(k.id,target,p.name);
+        kidRow.appendChild(redeemBtn);
+      }
+      card.appendChild(kidRow);
+    });
+    el.appendChild(card);
   });
 }
 function updatePrizeStars(prizeId,kidId,val){
@@ -947,43 +1009,23 @@ function updatePrizeStars(prizeId,kidId,val){
   saveAndSync();
 }
 function deletePrize(id){state.prizes=state.prizes.filter(function(p){return p.id!==id;});saveAndSync();renderPrizeAdmin();}
-
-function renderStarAdmin(){
-  var el=document.getElementById('star-bank-content');el.innerHTML='';
-  [{id:'avyan',name:'Avyan'},{id:'moksh',name:'Moksh'}].forEach(function(k){
-    var myStars=state.stars[k.id]||0;var av=state.avatars[k.id]||'🌟';
-    var prizeHTML='';
-    state.prizes.forEach(function(p){
-      var target=getPrizeStars(p,k.id);var pct=Math.min(100,Math.max(0,Math.round(myStars/target*100)));
-      prizeHTML+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+p.name+'</span><span>'+myStars+'/'+p.stars+' ⭐</span></div>'
-        +'<div class="progress-bar"><div class="progress-fill-g progress-fill" style="width:'+pct+'%"></div></div>'
-        +'<div style="font-size:12px;color:'+(pct>=100?'#166534':'#888')+';margin-top:3px">'+(pct>=100?'🎉 Ready to redeem!':(target-myStars)+' more stars to go')+'</div>'+(pct>=100?'<button class="btn btn-warn btn-sm" style="margin-top:4px" onclick="redeemPrize(\''+k.id+'\','+p.stars+',\''+p.name.replace(/'/g,"\\'")+'\')">🎁 Redeem (-'+p.stars+' stars)</button>':'')
-        +'</div>';
-    });
-    el.innerHTML+='<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
-      +'<div style="font-size:30px">'+av+'</div>'
-      +'<div><div style="font-size:16px;font-weight:700">'+k.name+'</div>'
-      +'<div style="font-size:13px;color:#666">⭐ '+myStars+' stars &nbsp; 🔥 '+calcStreak(k.id)+'-day streak</div></div></div>'
-      +(prizeHTML||'<div style="font-size:13px;color:#aaa">No prizes set yet</div>')
-      +'<div class="sep"></div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">'
-      +'<div><label style="font-size:12px;color:#666;font-weight:600">Add stars</label><br><input type="number" id="'+k.id+'-add" placeholder="amount" style="width:100px;margin-top:4px"></div>'
-      +'<button class="btn btn-success btn-sm" onclick="adjustStars(\''+k.id+'\',\'add\')">+ Add stars</button>'
-      +'<div><label style="font-size:12px;color:#666;font-weight:600">Redeem stars</label><br><input type="number" id="'+k.id+'-deduct" placeholder="amount" style="width:100px;margin-top:4px"></div>'
-      +'<button class="btn btn-danger btn-sm" onclick="adjustStars(\''+k.id+'\',\'deduct\')">− Redeem</button></div></div>';
-  });
-}
 function redeemPrize(kidId,stars,name){
-  if((state.stars[kidId]||0)>=stars){state.stars[kidId]=(state.stars[kidId]||0)-stars;saveAndSync();renderStarAdmin();renderHome();alert('🎁 '+name+' redeemed!\n−'+stars+' stars deducted.');}
-  else alert('Not enough stars yet!');
+  if((state.stars[kidId]||0)>=stars){
+    state.stars[kidId]=(state.stars[kidId]||0)-stars;
+    saveAndSync();renderPrizeAdmin();
+    alert('🎁 '+name+' redeemed for '+(kidId==='avyan'?'Avyan':'Moksh')+'!\n-'+stars+' stars deducted.');
+  } else alert('Not enough stars yet!');
 }
 function adjustStars(kidId,dir){
-  var inp=document.getElementById(kidId+'-'+(dir==='add'?'add':'deduct'));
-  var amt=parseInt(inp.value)||0;if(amt<=0){alert('Enter a number first.');return;}
+  var inp=document.getElementById('adj-'+kidId);
+  var amt=parseInt(inp.value)||0;
+  if(amt<=0){alert('Enter a number first.');return;}
   if(dir==='add') state.stars[kidId]=(state.stars[kidId]||0)+amt;
   else state.stars[kidId]=(state.stars[kidId]||0)-amt;
-  inp.value='';saveAndSync();renderStarAdmin();renderHome();
+  inp.value='';saveAndSync();renderPrizeAdmin();renderHome();
 }
+
+
 
 function giveExtraCredit(dir){
   var kidId=document.querySelector('input[name=extrakid]:checked').value;
@@ -1016,14 +1058,24 @@ function renderManage(){
     return (checks[t.id]==='yes'||checks[t.id]==='no')&&taskActiveOnDate(t,today())&&(t.type==='shared'||t.type===kidId||t.type==='rotate');
   });
   var el=document.getElementById('uncheck-list');
-  if(!answered.length){el.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px">No answered tasks today for this kid.</div>';return;}
   el.innerHTML='';
+  if(!answered.length){
+    el.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px">No answered tasks today for this kid.</div>';
+    return;
+  }
   answered.forEach(function(t){
     var ans=checks[t.id];var isYes=ans==='yes';
-    el.innerHTML+='<div class="task-row"><span style="font-size:22px">'+(isYes?'✅':'❌')+'</span>'
+    var row=document.createElement('div');
+    row.className='task-row';
+    row.innerHTML='<span style="font-size:22px;margin-right:8px">'+(isYes?'✅':'❌')+'</span>'
       +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div>'
-      +'<div style="font-size:12px;color:'+(isYes?'#166534':'#991b1b')+'">'+(isYes?'+':'-')+t.stars+' stars ('+ans+')</div></div>'
-      +'<button class="btn btn-warn btn-sm" onclick="parentUncheck(\"'+kidId+'\",\"'+t.id+'\")"  >Undo</button></div>';
+      +'<div style="font-size:12px;color:'+(isYes?'#166534':'#991b1b')+'">'+(isYes?'+':'-')+t.stars+' stars ('+ans+')</div></div>';
+    var btn=document.createElement('button');
+    btn.className='btn btn-warn btn-sm';
+    btn.textContent='Undo';
+    (function(kid,tid){btn.onclick=function(){parentUncheck(kid,tid);};})(kidId,t.id);
+    row.appendChild(btn);
+    el.appendChild(row);
   });
 }
 function parentUncheck(kidId,taskId){
