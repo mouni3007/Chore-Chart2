@@ -743,8 +743,9 @@ function setTaskState(taskId,newState){
   if(state.checks[tk][currentKid][taskId]) return;
   var stars=task.stars||0;
   if(state.stars[currentKid]===undefined||state.stars[currentKid]===null) state.stars[currentKid]=0;
-  if(newState==='yes') state.stars[currentKid]+=stars;
-  if(newState==='no')  state.stars[currentKid]-=stars;
+  var cur=state.stars[currentKid];
+  if(newState==='yes') state.stars[currentKid]=cur+stars;
+  if(newState==='no')  state.stars[currentKid]=cur-stars;
   state.checks[tk][currentKid][taskId]=newState;
   saveAndSync();renderKidScreen();
 }
@@ -1133,17 +1134,25 @@ function renderHistoryDay(){
   var extras=state.extraCredits[k][kidId];
   var name=kidId==='avyan'?'Avyan':'Moksh';
   var dateLabel=DAYS[d.getDay()]+', '+MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
-  var starsEarned=tasks.reduce(function(a,t){return a+(checks[t.id]?t.stars:0);},0);
+  var starsEarned=tasks.reduce(function(a,t){return a+(checks[t.id]==='yes'?t.stars:checks[t.id]==='no'?-t.stars:0);},0);
   var extraStars=extras.reduce(function(a,e){return a+e.stars;},0);
 
   var taskRows='';
   tasks.forEach(function(t){
-    var checked=!!checks[t.id];
-    taskRows+='<div class="task-row">'
-      +'<input type="checkbox" '+(checked?'checked':'')+' data-tid="'+t.id+'" data-stars="'+t.stars+'" onchange="histToggleTask(this)">'
-      +'<span style="font-size:22px;width:28px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
-      +'<div style="flex:1;font-size:14px;'+(checked?'text-decoration:line-through;color:#bbb':'')+'">'+t.name+'</div>'
-      +'<span class="star-badge">⭐ '+t.stars+'</span></div>';
+    var ans=checks[t.id];
+    var isYes=ans==='yes';var isNo=ans==='no';
+    var nameStyle=isYes?'text-decoration:line-through;color:#bbb':isNo?'color:#c00':'';
+    var badge=isYes?'<span style="padding:4px 10px;border-radius:6px;background:#dcfce7;color:#166534;font-size:12px;font-weight:700;border:1px solid #16a34a">✓ Yes</span>'
+      :isNo?'<span style="padding:4px 10px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:700;border:1px solid #dc2626">✗ No</span>'
+      :'<span style="padding:4px 10px;border-radius:6px;background:#f5f5f0;color:#888;font-size:12px">Not answered</span>';
+    taskRows+='<div class="task-row" style="gap:8px">'
+      +'<span style="font-size:20px;width:26px;text-align:center;flex-shrink:0">'+(isYes?'✅':isNo?'❌':(t.icon||'⭕'))+'</span>'
+      +'<div style="flex:1;font-size:14px;'+nameStyle+'">'+t.name+'<br><span style="font-size:11px;color:#aaa">⭐ '+t.stars+'</span></div>'
+      +badge;
+    if(ans){
+      taskRows+='<button class="btn btn-warn btn-sm" data-tid="'+t.id+'" data-stars="'+t.stars+'" data-ans="'+ans+'" onclick="histUndoTask(this)">Undo</button>';
+    }
+    taskRows+='</div>';
   });
 
   var extraRows='';
@@ -1176,20 +1185,19 @@ function renderHistoryDay(){
 }
 
 function histToggleTask(el){
+  histUndoTask(el);
+}
+function histUndoTask(el){
   var kidId=histContext.kidId; var k=histContext.k;
   if(!kidId||!k) return;
   var taskId=el.getAttribute('data-tid');
   var taskStars=parseInt(el.getAttribute('data-stars'))||0;
-  var checked=el.checked;
+  var ans=el.getAttribute('data-ans');
   if(!state.checks[k]) state.checks[k]={};
   if(!state.checks[k][kidId]) state.checks[k][kidId]={};
-  if(checked&&!state.checks[k][kidId][taskId]){
-    state.stars[kidId]=(state.stars[kidId]||0)+taskStars;
-    state.checks[k][kidId][taskId]=true;
-  } else if(!checked&&state.checks[k][kidId][taskId]){
-    state.stars[kidId]=(state.stars[kidId]||0)-taskStars;
-    delete state.checks[k][kidId][taskId];
-  }
+  if(ans==='yes') state.stars[kidId]=(state.stars[kidId]||0)-taskStars;
+  if(ans==='no')  state.stars[kidId]=(state.stars[kidId]||0)+taskStars;
+  delete state.checks[k][kidId][taskId];
   saveAndSync();renderHistoryDay();
 }
 
