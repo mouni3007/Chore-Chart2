@@ -314,7 +314,7 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
 
 </div>
 <script>
-var SCRIPT_URL='https://script.google.com/macros/s/AKfycbxOMX1RJ7sYxIMo3hBqZAhzUhyy08kOIcHDjG-i2fzzHyX_V93C4rHlXaloLpGHLEzYqA/exec';
+var SCRIPT_URL='https://script.google.com/macros/s/AKfycbwW8tg5ss09J4_In9rmt1wV-SKFjnBxcF5prF0tG1I-uvoFqIdiQeiWpIWKXmv-Vw4fuA/exec';
 var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var CAT_LABELS={morning:'Morning',afterschool:'After school',anytime:'Anytime',weekend:'Weekend'};
@@ -374,7 +374,15 @@ function syncToSheets(){
 }
 
 function doSync(){
-  showSyncBar('loading','⏳ Saving to Google Sheets...');
+  showSyncBar('loading','⏳ Saving...');
+  var cbName='choreSave'+Date.now();
+  var done=false;
+  function cleanup(){var el=document.getElementById('choreDS');if(el)el.parentNode.removeChild(el);try{delete window[cbName];}catch(e){}}
+  window[cbName]=function(d){
+    if(done)return;done=true;cleanup();
+    if(d&&d.ok){lastSyncTime=new Date();showSyncBar('ok','✅ Saved at '+lastSyncTime.toLocaleTimeString());}
+    else showSyncBar('err','⚠️ Save error — stored locally');
+  };
   var payload={
     tasks:JSON.stringify(state.tasks),
     prizes:JSON.stringify(state.prizes),
@@ -386,40 +394,43 @@ function doSync(){
     notif:JSON.stringify(state.notif),
     passcode:state.passcode||''
   };
-  var url=SCRIPT_URL+'?action=saveAll&payload='+encodeURIComponent(JSON.stringify(payload));
-  fetch(url).then(function(r){return r.json();}).then(function(d){
-    if(d.ok){lastSyncTime=new Date();showSyncBar('ok','✅ Synced at '+lastSyncTime.toLocaleTimeString());}
-    else showSyncBar('err','⚠️ Sync error: '+d.error);
-  }).catch(function(){showSyncBar('err','⚠️ Could not reach Google Sheets — saved locally');});
+  var s=document.createElement('script');s.id='choreDS';
+  s.src=SCRIPT_URL+'?action=saveAll&callback='+cbName+'&payload='+encodeURIComponent(JSON.stringify(payload));
+  s.onerror=function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ No internet — saved locally only');}};
+  setTimeout(function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ Save timeout — stored locally');}},10000);
+  document.head.appendChild(s);
 }
-
 function loadFromSheets(cb){
   showSyncBar('loading','⏳ Loading from Google Sheets...');
-  var url=SCRIPT_URL+'?action=load';
-  fetch(url).then(function(r){return r.json();}).then(function(d){
-    if(d.ok&&d.data){
+  var cbName='choreLoad'+Date.now();
+  var done=false;
+  function cleanup(){var el=document.getElementById('choreLS');if(el)el.parentNode.removeChild(el);try{delete window[cbName];}catch(e){}}
+  window[cbName]=function(d){
+    if(done)return;done=true;cleanup();
+    if(d&&d.ok&&d.data){
       var data=d.data;
-      if(data.tasks) state.tasks=JSON.parse(data.tasks);
-      if(data.prizes) state.prizes=JSON.parse(data.prizes);
-      if(data.stars) state.stars=JSON.parse(data.stars);
-      if(data.checks) state.checks=JSON.parse(data.checks);
-      if(data.extraCredits) state.extraCredits=JSON.parse(data.extraCredits);
-      if(data.rotationStart) state.rotationStart=data.rotationStart;
-      if(data.avatars) state.avatars=JSON.parse(data.avatars);
-      if(data.notif) state.notif=JSON.parse(data.notif);
-      if(data.passcode) state.passcode=data.passcode||'';
-      if(!state.tasks||!state.tasks.length) state.tasks=JSON.parse(JSON.stringify(DEFAULT_TASKS));
-      if(!state.extraCredits) state.extraCredits={};
+      try{if(data.tasks)state.tasks=JSON.parse(data.tasks);}catch(e){}
+      try{if(data.prizes)state.prizes=JSON.parse(data.prizes);}catch(e){}
+      try{if(data.stars)state.stars=JSON.parse(data.stars);}catch(e){}
+      try{if(data.checks)state.checks=JSON.parse(data.checks);}catch(e){}
+      try{if(data.extraCredits)state.extraCredits=JSON.parse(data.extraCredits);}catch(e){}
+      if(data.rotationStart)state.rotationStart=data.rotationStart;
+      try{if(data.avatars)state.avatars=JSON.parse(data.avatars);}catch(e){}
+      try{if(data.notif)state.notif=JSON.parse(data.notif);}catch(e){}
+      if(data.passcode!==undefined)state.passcode=data.passcode;
+      if(!state.tasks||!state.tasks.length)state.tasks=JSON.parse(JSON.stringify(DEFAULT_TASKS));
+      if(!state.extraCredits)state.extraCredits={};
       saveLocal();lastSyncTime=new Date();
-      showSyncBar('ok','✅ Loaded from Google Sheets at '+lastSyncTime.toLocaleTimeString());
-    } else showSyncBar('err','⚠️ Could not load from Sheets — using local data');
-    if(cb) cb();
-  }).catch(function(){
-    showSyncBar('err','⚠️ No internet — using local data');
-    if(cb) cb();
-  });
+      showSyncBar('ok','✅ Synced at '+lastSyncTime.toLocaleTimeString());
+    }else{showSyncBar('err','⚠️ Could not load from Sheets — using local data');}
+    if(cb)cb();
+  };
+  var s=document.createElement('script');s.id='choreLS';
+  s.src=SCRIPT_URL+'?action=load&callback='+cbName;
+  s.onerror=function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ No internet — using local data');if(cb)cb();}};
+  setTimeout(function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ Timeout — using local data');if(cb)cb();}},10000);
+  document.head.appendChild(s);
 }
-
 function showSyncBar(type,msg){
   var bar=document.getElementById('sync-bar');
   bar.style.display='flex';
