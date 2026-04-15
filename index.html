@@ -553,12 +553,14 @@ function renderHome(){
     var tk=todayKey();
     var done=tasks.filter(function(t){return state.checks[tk]&&state.checks[tk][k.id]&&state.checks[tk][k.id][t.id]==='yes';}).length;
     var pct=tasks.length?Math.round(done/tasks.length*100):0;
-    el.innerHTML+='<button class="big-kid-btn" onclick="openKid(\''+k.id+'\')">'
-      +'<div style="font-size:32px;width:54px;height:54px;border-radius:50%;background:#f0f0ec;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+av+'</div>'
-      +'<div style="flex:1"><div style="font-size:18px;font-weight:700;color:#1a1a1a">'+k.name+'</div>'
-      +'<div style="font-size:13px;color:#666;margin-top:2px">⭐ '+(state.stars[k.id]||0)+' stars &nbsp; 🔥 '+calcStreak(k.id)+'-day streak</div>'
-      +'<div class="progress-bar" style="width:140px;margin-top:6px"><div class="progress-fill" style="width:'+pct+'%"></div></div>'
-      +'<div style="font-size:12px;color:#aaa">'+done+'/'+tasks.length+' done today</div></div></button>';
+    el.innerHTML+='<button onclick="openKid(\''+k.id+'\')" style="width:100%;display:flex;align-items:center;gap:14px;padding:18px 20px;background:#fff;border:1px solid #e0e0d8;border-radius:12px;cursor:pointer;margin-bottom:12px;text-align:left;font-family:Arial,sans-serif">'
+      +'<div style="font-size:32px;width:54px;height:54px;border-radius:50%;background:#f5f5f0;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+av+'</div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:2px">'+k.name+'</div>'
+      +'<div style="font-size:13px;color:#666">⭐ '+(state.stars[k.id]||0)+' stars &nbsp; 🔥 '+calcStreak(k.id)+'-day streak</div>'
+      +'<div style="height:8px;background:#e5e5e0;border-radius:99px;overflow:hidden;width:140px;margin-top:6px"><div style="height:100%;background:#2563eb;border-radius:99px;width:'+pct+'%"></div></div>'
+      +'<div style="font-size:12px;color:#aaa;margin-top:2px">'+done+'/'+tasks.length+' done today</div>'
+      +'</div></button>';
   });
 }
 
@@ -616,15 +618,24 @@ function renderKidScreen(){
         var tstate=state.checks[vk][currentKid][t.id];
         var isYes=tstate==='yes';
         var isNo=tstate==='no';
+        var answered=isYes||isNo;
         var canAct=isViewingToday();
-        var strikeStyle=isYes||isNo?'text-decoration:line-through;color:#bbb':'';
-        rows+='<div class="task-row" style="gap:8px;flex-wrap:wrap">'
-          +'<span style="font-size:22px;width:28px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
-          +'<div style="flex:1;font-size:15px;'+strikeStyle+'">'+t.name+'</div>'
-          +'<span class="star-badge">⭐ '+t.stars+'</span>';
+        var strikeStyle=isYes?'text-decoration:line-through;color:#bbb':isNo?'color:#c00':'';
+        rows+='<div class="task-row" style="gap:8px;flex-wrap:wrap;align-items:center">'
+          +'<span style="font-size:22px;width:28px;text-align:center;flex-shrink:0">'+(isYes?'✅':isNo?'❌':(t.icon||'⭕'))+'</span>'
+          +'<div style="flex:1;min-width:100px;font-size:15px;'+strikeStyle+'">'+t.name+'<br><span style="font-size:11px;color:#aaa">⭐ '+t.stars+'</span></div>';
         if(canAct){
-          rows+='<button onclick="setTaskState(''+t.id+'','yes')" style="padding:5px 12px;border-radius:6px;border:1.5px solid '+(isYes?'#16a34a':'#ccc')+';background:'+(isYes?'#dcfce7':'#fff')+';color:'+(isYes?'#166534':'#555')+';font-size:13px;font-weight:700;cursor:pointer;font-family:Arial">✓ Yes</button>'
-          +'<button onclick="setTaskState(''+t.id+'','no')" style="padding:5px 12px;border-radius:6px;border:1.5px solid '+(isNo?'#dc2626':'#ccc')+';background:'+(isNo?'#fee2e2':'#fff')+';color:'+(isNo?'#991b1b':'#555')+';font-size:13px;font-weight:700;cursor:pointer;font-family:Arial">✗ No</button>';
+          if(answered){
+            // Locked - show result badge only
+            rows+='<span style="padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;'
+              +(isYes?'background:#dcfce7;color:#166534;border:1.5px solid #16a34a':'background:#fee2e2;color:#991b1b;border:1.5px solid #dc2626')
+              +'">'+(isYes?'✓ Yes':'✗ No')+'</span>'
+              +'<span style="font-size:11px;color:#aaa;display:block;width:100%;text-align:right;margin-top:2px">Locked — parent can undo</span>';
+          } else {
+            // Not yet answered - show buttons
+            rows+='<button data-tid="'+t.id+'" data-ans="yes" onclick="handleYesNo(this)" style="padding:6px 14px;border-radius:8px;border:1.5px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif">Yes</button>'
+              +'<button data-tid="'+t.id+'" data-ans="no" onclick="handleYesNo(this)" style="padding:6px 14px;border-radius:8px;border:1.5px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif">No</button>';
+          }
         } else {
           rows+='<span style="font-size:20px">'+(isYes?'✅':isNo?'❌':'⬜')+'</span>';
         }
@@ -718,6 +729,11 @@ function selectCalDay(d){
   renderKidScreen();
 }
 
+function handleYesNo(el){
+  var taskId=el.getAttribute('data-tid');
+  var answer=el.getAttribute('data-ans');
+  setTaskState(taskId,answer);
+}
 function setTaskState(taskId,newState){
   if(!isViewingToday()) return;
   var tk=todayKey();
@@ -725,20 +741,12 @@ function setTaskState(taskId,newState){
   if(!state.checks[tk][currentKid]) state.checks[tk][currentKid]={};
   var task=state.tasks.find(function(t){return t.id===taskId;});
   if(!task) return;
-  var prev=state.checks[tk][currentKid][taskId];
-  // Tapping same button again = undo (clear answer)
-  if(prev===newState){
-    if(prev==='yes') state.stars[currentKid]=state.stars[currentKid]-task.stars;
-    if(prev==='no')  state.stars[currentKid]=state.stars[currentKid]+task.stars;
-    delete state.checks[tk][currentKid][taskId];
-    saveAndSync();renderKidScreen();return;
-  }
-  // Reverse previous state first
-  if(prev==='yes') state.stars[currentKid]=state.stars[currentKid]-task.stars;
-  if(prev==='no') state.stars[currentKid]=state.stars[currentKid]+task.stars;
-  // Apply new state
-  if(newState==='yes') state.stars[currentKid]=state.stars[currentKid]+task.stars;
-  if(newState==='no') state.stars[currentKid]=state.stars[currentKid]-task.stars;
+  // If already answered, ignore - locked until parent undoes
+  if(state.checks[tk][currentKid][taskId]) return;
+  var stars=task.stars||0;
+  if(state.stars[currentKid]===undefined||state.stars[currentKid]===null) state.stars[currentKid]=0;
+  if(newState==='yes') state.stars[currentKid]+=stars;
+  if(newState==='no')  state.stars[currentKid]-=stars;
   state.checks[tk][currentKid][taskId]=newState;
   saveAndSync();renderKidScreen();
 }
@@ -811,27 +819,74 @@ function addTask(){
 
 function renderTaskAdmin(){
   var el=document.getElementById('task-list-admin');
-  if(!state.tasks.length){el.innerHTML='<div style="color:#aaa;text-align:center;padding:16px">No tasks yet</div>';return;}
-  el.innerHTML='<div style="font-size:12px;color:#aaa;margin-bottom:8px">Use ▲ ▼ arrows to reorder tasks</div>';
-  state.tasks.forEach(function(t,idx){
+  if(!state.tasks.length){
+    el.innerHTML='<div style="color:#aaa;text-align:center;padding:16px">No tasks yet</div>';
+    return;
+  }
+  el.innerHTML='<div style="font-size:12px;color:#aaa;margin-bottom:8px">Use ▲ ▼ to reorder</div>';
+  state.tasks.forEach(function(t,i){
     var who=t.type==='shared'?'Both':t.type==='rotate'?'Rotating ('+t.rotationType+')':t.type==='avyan'?'Avyan only':'Moksh only';
-    var isFirst=idx===0;var isLast=idx===state.tasks.length-1;
-    el.innerHTML+='<div class="task-row" id="trow-'+t.id+'">'
-      +'<div style="display:flex;flex-direction:column;gap:1px;margin-right:4px;flex-shrink:0">'
-      +'<button class="btn btn-sm" style="padding:2px 6px;font-size:11px;'+(isFirst?'opacity:0.3;cursor:default':'')
-      +'" onclick="moveTask(\''+t.id+'\',\'up\')" '+(isFirst?'disabled':'')+'>▲</button>'
-      +'<button class="btn btn-sm" style="padding:2px 6px;font-size:11px;'+(isLast?'opacity:0.3;cursor:default':'')
-      +'" onclick="moveTask(\''+t.id+'\',\'down\')" '+(isLast?'disabled':'')+'>▼</button>'
-      +'</div>'
-      +'<span style="font-size:20px;width:26px;text-align:center;flex-shrink:0">'+(t.icon||'✅')+'</span>'
-      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div>'
-      +'<div style="font-size:12px;color:#888">'+who+' · '+(CAT_LABELS[t.cat]||t.cat)+' · '+t.days+' · ⭐'+t.stars+'</div></div>'
-      +(t.type==='rotate'&&t.rotationType==='manual'?'<select onchange="updateAssignee(\''+t.id+'\',this.value)" style="width:auto;padding:4px 8px;font-size:12px"><option value="avyan" '+(t.currentAssignee==='avyan'?'selected':'')+'>Avyan</option><option value="moksh" '+(t.currentAssignee==='moksh'?'selected':'')+'>Moksh</option></select>':'')
-      +'<button class="btn btn-primary btn-sm" style="margin-right:4px" onclick="editTask(\'\'+t.id+\'\')">Edit</button>'
-      +'<button class="btn btn-danger btn-sm" onclick=+'<button class="btn btn-primary btn-sm" onclick="editTask(\\\''+t.id+'\\\')"  >Edit</button>'
-      +"deleteTask(\''+t.id+'\')">Delete</button></div>';
+    var row=document.createElement('div');
+    row.className='task-row';
+    row.id='trow-'+t.id;
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0f0ec';
+
+    var upBtn=document.createElement('button');
+    upBtn.className='btn btn-sm';
+    upBtn.textContent='▲';
+    upBtn.style.cssText='padding:2px 6px;font-size:11px'+(i===0?';opacity:0.3':'');
+    if(i===0) upBtn.disabled=true;
+    (function(id){upBtn.onclick=function(){moveTask(id,'up');};})(t.id);
+
+    var dnBtn=document.createElement('button');
+    dnBtn.className='btn btn-sm';
+    dnBtn.textContent='▼';
+    dnBtn.style.cssText='padding:2px 6px;font-size:11px'+(i===state.tasks.length-1?';opacity:0.3':'');
+    if(i===state.tasks.length-1) dnBtn.disabled=true;
+    (function(id){dnBtn.onclick=function(){moveTask(id,'down');};})(t.id);
+
+    var arrows=document.createElement('div');
+    arrows.style.cssText='display:flex;flex-direction:column;gap:1px;margin-right:4px;flex-shrink:0';
+    arrows.appendChild(upBtn);arrows.appendChild(dnBtn);
+
+    var icon=document.createElement('span');
+    icon.textContent=t.icon||'✅';
+    icon.style.cssText='font-size:20px;width:26px;text-align:center;flex-shrink:0';
+
+    var info=document.createElement('div');
+    info.style.flex='1';
+    info.innerHTML='<div style="font-size:14px;font-weight:700">'+t.name+'</div>'
+      +'<div style="font-size:12px;color:#888">'+who+' · '+(CAT_LABELS[t.cat]||t.cat)+' · '+t.days+' · ⭐'+t.stars+'</div>';
+
+    row.appendChild(arrows);
+    row.appendChild(icon);
+    row.appendChild(info);
+
+    if(t.type==='rotate'&&t.rotationType==='manual'){
+      var sel=document.createElement('select');
+      sel.style.cssText='width:auto;padding:4px 8px;font-size:12px';
+      sel.innerHTML='<option value="avyan"'+(t.currentAssignee==='avyan'?' selected':'')+'>Avyan</option>'
+        +'<option value="moksh"'+(t.currentAssignee==='moksh'?' selected':'')+'>Moksh</option>';
+      (function(id){sel.onchange=function(){updateAssignee(id,this.value);};})(t.id);
+      row.appendChild(sel);
+    }
+
+    var editBtn=document.createElement('button');
+    editBtn.className='btn btn-primary btn-sm';
+    editBtn.textContent='Edit';
+    (function(id){editBtn.onclick=function(){editTask(id);};})(t.id);
+
+    var delBtn=document.createElement('button');
+    delBtn.className='btn btn-danger btn-sm';
+    delBtn.textContent='Delete';
+    (function(id){delBtn.onclick=function(){deleteTask(id);};})(t.id);
+
+    row.appendChild(editBtn);
+    row.appendChild(delBtn);
+    el.appendChild(row);
   });
 }
+
 function moveTask(id,dir){
   var idx=state.tasks.findIndex(function(t){return t.id===id;});
   if(idx<0) return;
@@ -1201,20 +1256,63 @@ var editingTaskId=null;
 function editTask(id){
   var t=state.tasks.find(function(x){return x.id===id;});
   if(!t) return;
-  editingTaskId=id;
-  document.getElementById('edit-task-name').value=t.name||'';
-  document.getElementById('edit-task-icon').value=t.icon||'';
-  document.getElementById('edit-task-stars').value=t.stars||1;
-  document.getElementById('edit-task-cat').value=t.cat||'anytime';
-  var dayRadios=document.querySelectorAll('input[name="edit-tdays"]');
-  dayRadios.forEach(function(r){r.checked=r.value===(t.days||'daily');});
-  document.getElementById('edit-modal').style.display='flex';
+  var row=document.getElementById('trow-'+id);
+  if(!row) return;
+  row.style.cssText='padding:10px 0;border-bottom:1px solid #f0f0ec';
+  row.innerHTML='';
+
+  var wrap=document.createElement('div');
+  wrap.style.cssText='padding:10px;background:#f9fafb;border-radius:8px;width:100%';
+
+  var topRow=document.createElement('div');
+  topRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center';
+
+  var nameInp=document.createElement('input');
+  nameInp.type='text';nameInp.id='et-name-'+id;
+  nameInp.value=t.name;nameInp.placeholder='Task name';
+  nameInp.style.cssText='flex:1;min-width:150px;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px';
+
+  var iconInp=document.createElement('input');
+  iconInp.type='text';iconInp.id='et-icon-'+id;
+  iconInp.value=t.icon||'';iconInp.placeholder='🎯';
+  iconInp.style.cssText='width:55px;text-align:center;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px';
+
+  var emojiBtn=document.createElement('button');
+  emojiBtn.className='btn btn-sm';
+  emojiBtn.textContent='😀 Pick';
+  emojiBtn.style.cssText='padding:5px 9px';
+  (function(tid){emojiBtn.onclick=function(){showEmojiPicker(tid);};})(id);
+
+  var starsInp=document.createElement('input');
+  starsInp.type='number';starsInp.id='et-stars-'+id;
+  starsInp.value=t.stars;starsInp.min=1;starsInp.max=20;
+  starsInp.style.cssText='width:60px;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px';
+
+  topRow.appendChild(nameInp);topRow.appendChild(iconInp);
+  topRow.appendChild(emojiBtn);topRow.appendChild(starsInp);
+
+  var picker=document.createElement('div');
+  picker.id='ep-'+id;
+  picker.style.cssText='display:none;background:#fff;border:1px solid #e0e0d8;border-radius:8px;padding:8px;margin-bottom:8px;max-height:150px;overflow-y:auto;font-size:24px;line-height:2;letter-spacing:2px';
+
+  var btnRow=document.createElement('div');
+  btnRow.style.cssText='display:flex;gap:8px';
+
+  var saveBtn=document.createElement('button');
+  saveBtn.className='btn btn-primary btn-sm';
+  saveBtn.textContent='✓ Save';
+  (function(tid){saveBtn.onclick=function(){saveEditTask(tid);};})(id);
+
+  var cancelBtn=document.createElement('button');
+  cancelBtn.className='btn btn-sm';
+  cancelBtn.textContent='Cancel';
+  cancelBtn.onclick=function(){renderTaskAdmin();};
+
+  btnRow.appendChild(saveBtn);btnRow.appendChild(cancelBtn);
+  wrap.appendChild(topRow);wrap.appendChild(picker);wrap.appendChild(btnRow);
+  row.appendChild(wrap);
 }
-function closeEditModal(){
-  document.getElementById('edit-modal').style.display='none';
-  document.getElementById('emoji-picker-edit').style.display='none';
-  editingTaskId=null;
-}
+
 function saveEditTask(){
   if(!editingTaskId) return;
   var t=state.tasks.find(function(x){return x.id===editingTaskId;});
@@ -1232,25 +1330,7 @@ function saveEditTask(){
 }
 
 
-function editTask(id){
-  var t=state.tasks.find(function(x){return x.id===id;});
-  if(!t) return;
-  var el=document.getElementById('trow-'+id);
-  if(!el) return;
-  el.innerHTML='<div style="padding:10px;background:#f9fafb;border-radius:8px;width:100%">'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
-    +'<input id="et-name-'+id+'" type="text" value="'+t.name.replace(/"/g,"'")+'" style="flex:1;min-width:150px" placeholder="Task name">'
-    +'<input id="et-icon-'+id+'" type="text" value="'+(t.icon||'')+'" style="width:55px;text-align:center" placeholder="🎯">'
-    +'<button class="btn btn-sm" onclick="showEmojiPicker(''+id+'')" style="padding:5px 9px">😀 Pick</button>'
-    +'<input id="et-stars-'+id+'" type="number" value="'+t.stars+'" min="1" max="20" style="width:60px" title="Stars">'
-    +'</div>'
-    +'<div id="ep-'+id+'" style="display:none;background:#fff;border:1px solid #e0e0d8;border-radius:8px;padding:8px;margin-bottom:8px;max-height:150px;overflow-y:auto;font-size:24px;line-height:2;letter-spacing:2px"></div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button class="btn btn-primary btn-sm" onclick="saveEditTask(''+id+'')">✓ Save</button>'
-    +'<button class="btn btn-sm" onclick="renderTaskAdmin()">Cancel</button>'
-    +'</div>'
-    +'</div>';
-}
+
 function saveEditTask(id){
   var t=state.tasks.find(function(x){return x.id===id;});if(!t) return;
   var name=document.getElementById('et-name-'+id).value.trim();
