@@ -421,14 +421,6 @@ function syncToSheets(){
 
 function doSync(){
   showSyncBar('loading','⏳ Saving...');
-  var cbName='choreSave'+Date.now();
-  var done=false;
-  function cleanup(){var el=document.getElementById('choreDS');if(el)el.parentNode.removeChild(el);try{delete window[cbName];}catch(e){}}
-  window[cbName]=function(d){
-    if(done)return;done=true;cleanup();
-    if(d&&d.ok){lastSyncTime=new Date();showSyncBar('ok','✅ Saved at '+lastSyncTime.toLocaleTimeString());}
-    else showSyncBar('err','⚠️ Save error — stored locally');
-  };
   var payload={
     tasks:JSON.stringify(state.tasks),
     prizes:JSON.stringify(state.prizes),
@@ -440,11 +432,17 @@ function doSync(){
     notif:JSON.stringify(state.notif),
     passcode:state.passcode||''
   };
-  var s=document.createElement('script');s.id='choreDS';
-  s.src=SCRIPT_URL+'?action=saveAll&callback='+cbName+'&payload='+encodeURIComponent(JSON.stringify(payload));
-  s.onerror=function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ No internet — saved locally only');}};
-  setTimeout(function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ Save timeout — stored locally');}},10000);
-  document.head.appendChild(s);
+  var params=new URLSearchParams();
+  params.append('action','saveAll');
+  params.append('payload',JSON.stringify(payload));
+  fetch(SCRIPT_URL,{method:'POST',body:params})
+    .then(function(){
+      lastSyncTime=new Date();
+      showSyncBar('ok','✅ Saved at '+lastSyncTime.toLocaleTimeString());
+    })
+    .catch(function(){
+      showSyncBar('err','⚠️ No internet — saved locally only');
+    });
 }
 function loadFromSheets(cb){
   showSyncBar('loading','⏳ Loading from Google Sheets...');
@@ -635,7 +633,13 @@ function renderKidScreen(){
               +'<button data-tid="'+t.id+'" data-ans="no" onclick="handleYesNo(this)" style="padding:6px 14px;border-radius:8px;border:1.5px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif">No</button>';
           }
         } else {
-          rows+='<span style="font-size:20px">'+(isYes?'✅':isNo?'❌':'⬜')+'</span>';
+          var daysDiff2=Math.floor((today()-vd)/86400000);
+          if(!answered&&daysDiff2<=7){
+            rows+='<button data-tid="'+t.id+'" data-ans="yes" onclick="handleYesNo(this)" style="padding:6px 14px;border-radius:8px;border:1.5px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif">Yes</button>'
+              +'<button data-tid="'+t.id+'" data-ans="no" onclick="handleYesNo(this)" style="padding:6px 14px;border-radius:8px;border:1.5px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif">No</button>';
+          } else {
+            rows+='<span style="font-size:20px">'+(isYes?'✅':isNo?'❌':'⬜')+'</span>';
+          }
         }
         rows+='</div>';
       });
@@ -733,7 +737,9 @@ function handleYesNo(el){
   setTaskState(taskId,answer);
 }
 function setTaskState(taskId,newState){
-  if(!isViewingToday()) return;
+  var vd=getViewDate();
+  var daysDiff=Math.floor((today()-vd)/86400000);
+  if(daysDiff>7) return; // can't answer tasks older than 7 days
   var tk=todayKey();
   if(!state.checks[tk]) state.checks[tk]={};
   if(!state.checks[tk][currentKid]) state.checks[tk][currentKid]={};
@@ -1269,11 +1275,14 @@ function scheduleNotif(){
 }
 
 function checkPasscode(){
-  if(!state.passcode||state.passcode===''){goTo('s-parent');return;}
+  if(!state.passcode||state.passcode.toString().trim()===''){goTo('s-parent');return;}
   var entered=prompt('Enter parent passcode:');
   if(entered===null) return;
-  if(String(entered)===String(state.passcode)) goTo('s-parent');
-  else alert('Wrong passcode. Try again.');
+  if(entered.toString().trim()===state.passcode.toString().trim()){
+    goTo('s-parent');
+  } else {
+    alert('Wrong passcode. Try again.');
+  }
 }
 function savePasscode(){
   var val=document.getElementById('new-passcode').value.trim();
