@@ -419,30 +419,43 @@ function syncToSheets(){
   syncTimeout=setTimeout(function(){doSync();},1500);
 }
 
+function pruneChecks(){
+  // Keep only last 60 days to prevent payload getting too large
+  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
+  var pruned={};
+  Object.keys(state.checks).forEach(function(k){
+    var parts=k.split('-');
+    var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+    if(d>=cutoff) pruned[k]=state.checks[k];
+  });
+  return pruned;
+}
 function doSync(){
   showSyncBar('loading','⏳ Saving...');
   var payload={
     tasks:JSON.stringify(state.tasks),
     prizes:JSON.stringify(state.prizes),
     stars:JSON.stringify(state.stars),
-    checks:JSON.stringify(state.checks),
+    checks:JSON.stringify(pruneChecks()),
     extraCredits:JSON.stringify(state.extraCredits),
     rotationStart:state.rotationStart,
     avatars:JSON.stringify(state.avatars),
     notif:JSON.stringify(state.notif),
     passcode:state.passcode||''
   };
-  var params=new URLSearchParams();
-  params.append('action','saveAll');
-  params.append('payload',JSON.stringify(payload));
-  fetch(SCRIPT_URL,{method:'POST',body:params})
-    .then(function(){
-      lastSyncTime=new Date();
-      showSyncBar('ok','✅ Saved at '+lastSyncTime.toLocaleTimeString());
-    })
-    .catch(function(){
-      showSyncBar('err','⚠️ No internet — saved locally only');
-    });
+  var cbName='choreSave'+Date.now();
+  var done=false;
+  function cleanup(){var el=document.getElementById('choreDS');if(el)el.parentNode.removeChild(el);try{delete window[cbName];}catch(e){}}
+  window[cbName]=function(d){
+    if(done)return;done=true;cleanup();
+    if(d&&d.ok){lastSyncTime=new Date();showSyncBar('ok','✅ Saved at '+lastSyncTime.toLocaleTimeString());}
+    else showSyncBar('err','⚠️ Save error — stored locally');
+  };
+  var s=document.createElement('script');s.id='choreDS';
+  s.src=SCRIPT_URL+'?action=saveAll&callback='+cbName+'&payload='+encodeURIComponent(JSON.stringify(payload));
+  s.onerror=function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ No internet — saved locally only');}};
+  setTimeout(function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ Save timeout — stored locally');}},15000);
+  document.head.appendChild(s);
 }
 function loadFromSheets(cb){
   showSyncBar('loading','⏳ Loading from Google Sheets...');
@@ -739,20 +752,19 @@ function handleYesNo(el){
 function setTaskState(taskId,newState){
   var vd=getViewDate();
   var daysDiff=Math.floor((today()-vd)/86400000);
-  if(daysDiff>7) return; // can't answer tasks older than 7 days
-  var tk=todayKey();
-  if(!state.checks[tk]) state.checks[tk]={};
-  if(!state.checks[tk][currentKid]) state.checks[tk][currentKid]={};
+  if(daysDiff>7) return;
+  var vk=getViewKey();
+  if(!state.checks[vk]) state.checks[vk]={};
+  if(!state.checks[vk][currentKid]) state.checks[vk][currentKid]={};
   var task=state.tasks.find(function(t){return t.id===taskId;});
   if(!task) return;
-  // If already answered, ignore - locked until parent undoes
-  if(state.checks[tk][currentKid][taskId]) return;
+  if(state.checks[vk][currentKid][taskId]) return;
   var stars=task.stars||0;
   if(state.stars[currentKid]===undefined||state.stars[currentKid]===null) state.stars[currentKid]=0;
   var cur=state.stars[currentKid];
   if(newState==='yes') state.stars[currentKid]=cur+stars;
   if(newState==='no')  state.stars[currentKid]=cur-stars;
-  state.checks[tk][currentKid][taskId]=newState;
+  state.checks[vk][currentKid][taskId]=newState;
   saveAndSync();renderKidScreen();
 }
 function toggleTask(taskId,checked){ setTaskState(taskId,checked?'yes':'no'); }
@@ -1288,8 +1300,19 @@ function savePasscode(){
   var val=document.getElementById('new-passcode').value.trim();
   if(val!==''&&(isNaN(val)||val.length>6)){alert('Please enter up to 6 digits, or leave blank.');return;}
   state.passcode=val;
-  saveAndSync();
-  document.getElementById('passcode-status').textContent=val===''?'Passcode removed.':'Passcode set to: '+val;
+  saveLocal();
+  // Save passcode with a tiny dedicated sync so it doesn't get lost in large payload
+  var cbName='chorePC'+Date.now();
+  var done=false;
+  function cleanup(){var el=document.getElementById('chorePC');if(el)el.parentNode.removeChild(el);try{delete window[cbName];}catch(e){}}
+  window[cbName]=function(d){if(done)return;done=true;cleanup();};
+  var s=document.createElement('script');s.id='chorePC';
+  var miniPayload={passcode:val};
+  s.src=SCRIPT_URL+'?action=saveAll&callback='+cbName+'&payload='+encodeURIComponent(JSON.stringify(miniPayload));
+  s.onerror=function(){if(!done){done=true;cleanup();}};
+  setTimeout(function(){if(!done){done=true;cleanup();}},8000);
+  document.head.appendChild(s);
+  document.getElementById('passcode-status').textContent=val===''?'Passcode removed.':'Passcode saved ✅';
   document.getElementById('new-passcode').value='';
 }
 var EMOJIS=['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','💟','❣️','💔','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💨','🕳️','💬','💭','💤','👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁️','👅','👄','🫦','🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🍕','🍔','🌮','🌯','🍜','🍣','🎂','🍩','🍪','🍫','🍬','🍭','🍦','🥛','🥤','🧃','☕','🍵','🥛','🍺','🌍','🌎','🌏','⭐','🌟','💫','✨','🌈','☀️','🌤️','⛅','🌦️','🌧️','⛈️','🌩️','🌪️','❄️','☃️','⛄','🌊','🔥','💧','🌱','🌲','🌳','🌴','🌵','🌾','🍀','🍁','🍂','🍃','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🪳','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🐿️','🦔','⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🎣','🤿','🎽','🎿','🛷','🥌','🏆','🥇','🥈','🥉','🏅','🎖️','🎗️','🎫','🎟️','🎪','🎭','🎨','🖼️','🎰','🎲','🎯','🎳','🎮','🎸','🎹','🎺','🎻','🥁','🪘','🎷','🎵','🎶','🎙️','🎚️','🎛️','📻','📺','📷','📸','📹','🎥','📽️','🎬','📱','💻','⌨️','🖥️','🖨️','🖱️','🗜️','💾','💿','📀','📼','📟','📠','☎️','📞','📡','🔋','🔌','💡','🔦','🕯️','🪔','🧯','🛒','💰','💵','💳','📈','📉','📊','📋','📌','📍','✂️','🗃️','🗑️','🔒','🔓','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🛡️','🔧','🔩','⚙️','🗜️','🔗','⛓️','🧲','🪜','🧰','🪣','🧲','💊','🩺','🩹','🧬','🔬','🔭','📡','🚗','🚕','🚙','🚌','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛹','🛼','🚏','⛽','🚦','🚥','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🏕️','🏞️','🎠','🎡','🎢','🛤️','🛣️','🗺️','🗾','🧭','🏔️','⛰️','🌋','🗻','🏜️','🏝️','🏖️','🏗️','🧱','🪨','🪵','🛖'];
@@ -1429,6 +1452,13 @@ function showEmojiPicker(id){
   picker.style.display='block';
 }
 
+// Emergency passcode reset via URL param
+if(window.location.search.indexOf('resetpasscode=1')>=0){
+  try{var ls=JSON.parse(localStorage.getItem('choreV4')||'{}');ls.passcode='';localStorage.setItem('choreV4',JSON.stringify(ls));}catch(e){}
+  state.passcode='';
+  window.history.replaceState({},'',window.location.pathname);
+  alert('Passcode cleared! You can now access Parent Settings freely.');
+}
 loadLocal();
 renderHome();
 pTab('tasks');
