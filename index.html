@@ -160,7 +160,6 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
   <div class="nav-bar">
     <button class="btn" id="ptab-tasks" onclick="pTab('tasks')">Tasks</button>
     <button class="btn" id="ptab-prizes" onclick="pTab('prizes')">Prizes</button>
-        <button class="btn" id="ptab-manage" onclick="pTab('manage')">Manage</button>
     <button class="btn" id="ptab-history" onclick="pTab('history')">History</button>
     <button class="btn" id="ptab-notif" onclick="pTab('notif')">Reminders</button>
   </div>
@@ -235,11 +234,10 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
     <div class="card"><div class="section-title">Current prizes</div><div id="prize-list-admin"></div></div>
   </div>
 
-
-  <div id="p-manage" style="display:none">
+  <div id="p-prizes-extra" style="display:none">
     <div class="card">
-      <div class="section-title" style="margin-bottom:10px">Give or deduct stars with reason</div>
-      <div style="font-size:13px;color:#666;margin-bottom:12px">Use this to reward good behaviour outside tasks, or deduct stars for bad behaviour — the reason is saved to their history so you remember why.</div>
+      <div class="section-title" style="margin-bottom:10px">Extra credit — give or deduct stars</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">Give bonus stars for good behaviour, or deduct for bad behaviour. Reason is saved to history.</div>
       <div class="form-row"><label>Kid</label>
         <div class="radio-group">
           <label class="radio-opt"><input type="radio" name="extrakid" value="avyan" checked> Avyan</label>
@@ -254,16 +252,6 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
       </div>
     </div>
     <div class="card">
-      <div class="section-title" style="margin-bottom:10px">Uncheck a task (today — parent override)</div>
-      <div class="form-row"><label>Kid</label>
-        <div class="radio-group">
-          <label class="radio-opt"><input type="radio" name="unkid" value="avyan" checked> Avyan</label>
-          <label class="radio-opt"><input type="radio" name="unkid" value="moksh"> Moksh</label>
-        </div>
-      </div>
-      <div id="uncheck-list"></div>
-    </div>
-    <div class="card">
       <div class="section-title" style="margin-bottom:8px">Streak bonus</div>
       <div style="font-size:13px;color:#666;margin-bottom:12px">Stars accumulate — redeem whenever, no fixed schedule needed.</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
@@ -276,6 +264,8 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
       </div>
     </div>
   </div>
+
+
 
   <div id="p-history" style="display:none">
     <div class="card">
@@ -354,7 +344,7 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
 </div>
 
 <script>
-var SCRIPT_URL='https://script.google.com/macros/s/AKfycbwW8tg5ss09J4_In9rmt1wV-SKFjnBxcF5prF0tG1I-uvoFqIdiQeiWpIWKXmv-Vw4fuA/exec';
+var SCRIPT_URL='https://script.google.com/macros/s/AKfycbzzvMz6s1QA4FuXziG7jraI75XMS4qbX2kxdLSWGZdOg_DyQ3AKX-kKD7JH-j8G7KhNBQ/exec';
 var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var CAT_LABELS={morning:'Morning',afterschool:'After school',anytime:'Anytime',weekend:'Weekend'};
@@ -434,8 +424,29 @@ function doSync(){
     extraCredits:JSON.stringify(state.extraCredits),
     rotationStart:state.rotationStart,
     avatars:JSON.stringify(state.avatars),
-    notif:JSON.stringify(state.notif),
+    notif:JSON.stringify(state.notif)
   };
+  var body=JSON.stringify({action:'saveAll',payload:JSON.stringify(payload)});
+  fetch(SCRIPT_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:body
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d&&d.ok){
+      lastSyncTime=new Date();
+      showSyncBar('ok','✅ Saved at '+lastSyncTime.toLocaleTimeString());
+    } else {
+      showSyncBar('err','⚠️ Save error — stored locally');
+    }
+  })
+  .catch(function(){
+    // Fallback to JSONP if fetch fails (e.g. CORS issue)
+    doSyncJSONP(payload);
+  });
+}
+function doSyncJSONP(payload){
   var cbName='choreSave'+Date.now();
   var done=false;
   function cleanup(){var el=document.getElementById('choreDS');if(el)el.parentNode.removeChild(el);try{delete window[cbName];}catch(e){}}
@@ -447,7 +458,7 @@ function doSync(){
   var s=document.createElement('script');s.id='choreDS';
   s.src=SCRIPT_URL+'?action=saveAll&callback='+cbName+'&payload='+encodeURIComponent(JSON.stringify(payload));
   s.onerror=function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ No internet — saved locally only');}};
-  setTimeout(function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ Save timeout — stored locally');}},15000);
+  setTimeout(function(){if(!done){done=true;cleanup();showSyncBar('err','⚠️ Timeout — stored locally');}},15000);
   document.head.appendChild(s);
 }
 function loadFromSheets(cb){
@@ -780,19 +791,20 @@ function showCelebration(tasks,tk){
 
 // ---- PARENT TABS ----
 function pTab(tab){
-  ['tasks','prizes','manage','history','notif'].forEach(function(t){
+  ['tasks','prizes','history','notif'].forEach(function(t){
     var el=document.getElementById('p-'+t);
     var btn=document.getElementById('ptab-'+t);
     if(el) el.style.display=t===tab?'block':'none';
     if(btn) btn.className=t===tab?'btn btn-primary':'btn';
   });
-  if(tab==='prizes') renderPrizeAdmin();
-  if(tab==='tasks') renderTaskAdmin();
-  if(tab==='manage') renderManage();
+  if(tab==='prizes'){renderPrizeAdmin();var ex=document.getElementById('p-prizes-extra');if(ex)ex.style.display='block';}
+  if(tab==='tasks'){renderTaskAdmin();var ex2=document.getElementById('p-prizes-extra');if(ex2)ex2.style.display='none';}
   if(tab==='history'){
     var today_str=new Date().toISOString().split('T')[0];
+    var sevenAgo=new Date();sevenAgo.setDate(sevenAgo.getDate()-7);
     document.getElementById('hist-date').value=today_str;
     document.getElementById('hist-date').max=today_str;
+    document.getElementById('hist-date').min=sevenAgo.toISOString().split('T')[0];
     document.getElementById('hist-day-content').style.display='none';
   }
   if(tab==='notif') renderNotifPanel();
@@ -1011,7 +1023,11 @@ function renderPrizeAdmin(){
     });
     el.appendChild(card);
   });
+
+  var ex=document.getElementById('p-prizes-extra');
+  if(ex) ex.style.display='block';
 }
+
 function updatePrizeStars(prizeId,kidId,val){
   var p=state.prizes.find(function(x){return x.id===prizeId;});
   if(!p) return;
@@ -1061,48 +1077,6 @@ function giveExtraCredit(dir){
   else alert('🌟 '+name+' got +'+stars+' stars! Now has '+state.stars[kidId]+'.\nReason: '+reason);
 }
 
-function renderManage(){
-  var kidId=document.querySelector('input[name=unkid]:checked').value;
-  var tk=todayKey();
-  var checks=(state.checks[tk]&&state.checks[tk][kidId])||{};
-  var answered=state.tasks.filter(function(t){
-    return (checks[t.id]==='yes'||checks[t.id]==='no')&&taskActiveOnDate(t,today())&&(t.type==='shared'||t.type===kidId||t.type==='rotate');
-  });
-  var el=document.getElementById('uncheck-list');
-  el.innerHTML='';
-  if(!answered.length){
-    el.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px">No answered tasks today for this kid.</div>';
-    return;
-  }
-  answered.forEach(function(t){
-    var ans=checks[t.id];var isYes=ans==='yes';
-    var row=document.createElement('div');
-    row.className='task-row';
-    row.innerHTML='<span style="font-size:22px;margin-right:8px">'+(isYes?'✅':'❌')+'</span>'
-      +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+t.name+'</div>'
-      +'<div style="font-size:12px;color:'+(isYes?'#166534':'#991b1b')+'">'+(isYes?'+':'-')+t.stars+' stars ('+ans+')</div></div>';
-    var btn=document.createElement('button');
-    btn.className='btn btn-warn btn-sm';
-    btn.textContent='Undo';
-    (function(kid,tid){btn.onclick=function(){parentUncheck(kid,tid);};})(kidId,t.id);
-    row.appendChild(btn);
-    el.appendChild(row);
-  });
-}
-function parentUncheck(kidId,taskId){
-  var tk=todayKey();
-  if(state.checks[tk]&&state.checks[tk][kidId]&&state.checks[tk][kidId][taskId]){
-    var task=state.tasks.find(function(t){return t.id===taskId;});
-    var ans=state.checks[tk][kidId][taskId];
-    if(task){
-      if(ans==='yes') state.stars[kidId]=(state.stars[kidId]||0)-task.stars;
-      if(ans==='no')  state.stars[kidId]=(state.stars[kidId]||0)+task.stars;
-    }
-    delete state.checks[tk][kidId][taskId];
-    saveAndSync();renderManage();
-  }
-}
-
 function giveStreakBonus(kidId){
   var days=parseInt(document.getElementById('streak-days').value)||7;
   var bonus=parseInt(document.getElementById('streak-bonus').value)||0;
@@ -1143,55 +1117,126 @@ function renderHistoryDay(){
   var checks=state.checks[k][kidId];
   var extras=state.extraCredits[k][kidId];
   var name=kidId==='avyan'?'Avyan':'Moksh';
+  var av=state.avatars[kidId]||'🌟';
   var dateLabel=DAYS[d.getDay()]+', '+MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
-  var starsEarned=tasks.reduce(function(a,t){return a+(checks[t.id]==='yes'?t.stars:checks[t.id]==='no'?-t.stars:0);},0);
+
+  var taskStarsTotal=tasks.reduce(function(a,t){
+    return a+(checks[t.id]==='yes'?t.stars:checks[t.id]==='no'?-t.stars:0);
+  },0);
   var extraStars=extras.reduce(function(a,e){return a+e.stars;},0);
 
-  var taskRows='';
-  tasks.forEach(function(t){
-    var ans=checks[t.id];
-    var isYes=ans==='yes';var isNo=ans==='no';
-    var nameStyle=isYes?'text-decoration:line-through;color:#bbb':isNo?'color:#c00':'';
-    var badge=isYes?'<span style="padding:4px 10px;border-radius:6px;background:#dcfce7;color:#166534;font-size:12px;font-weight:700;border:1px solid #16a34a">✓ Yes</span>'
-      :isNo?'<span style="padding:4px 10px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:700;border:1px solid #dc2626">✗ No</span>'
-      :'<span style="padding:4px 10px;border-radius:6px;background:#f5f5f0;color:#888;font-size:12px">Not answered</span>';
-    taskRows+='<div class="task-row" style="gap:8px">'
-      +'<span style="font-size:20px;width:26px;text-align:center;flex-shrink:0">'+(isYes?'✅':isNo?'❌':(t.icon||'⭕'))+'</span>'
-      +'<div style="flex:1;font-size:14px;'+nameStyle+'">'+t.name+'<br><span style="font-size:11px;color:#aaa">⭐ '+t.stars+'</span></div>'
-      +badge;
-    if(ans){
-      taskRows+='<button class="btn btn-warn btn-sm" data-tid="'+t.id+'" data-stars="'+t.stars+'" data-ans="'+ans+'" onclick="histUndoTask(this)">Undo</button>';
-    }
-    taskRows+='</div>';
-  });
-
-  var extraRows='';
-  extras.forEach(function(e,i){
-    var isDeduct=e.stars<0;
-    extraRows+='<div class="task-row"><span style="font-size:22px">'+(isDeduct?'⚠️':'🌟')+'</span>'
-      +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+(isDeduct?'#991b1b':'#166534')+'">'+(isDeduct?'Deduction':'Extra credit')+'</div>'
-      +'<div style="font-size:12px;color:#666">'+e.reason+'</div></div>'
-      +'<span style="background:'+(isDeduct?'#fee2e2':'#fce7f3')+';color:'+(isDeduct?'#991b1b':'#9d174d')+';border-radius:6px;font-size:12px;padding:3px 8px;font-weight:600">'+(isDeduct?e.stars:'+'+e.stars)+' ⭐</span>'
-      +'<button class="btn btn-danger btn-sm" onclick="histDeleteExtra('+i+')">Remove</button></div>';
-  });
+  // Check if within editable range (7 days)
+  var daysDiff=Math.floor((today()-d)/86400000);
+  var canEdit=daysDiff<=7;
 
   var el=document.getElementById('hist-day-content');
   el.style.display='block';
-  el.innerHTML='<div class="card">'
-    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">'+name+' — '+dateLabel+'</div>'
-    +'<div style="font-size:13px;color:#666;margin-bottom:12px">Task stars: ⭐ '+starsEarned+' &nbsp; Adjustments: '+(extraStars>=0?'+':'')+extraStars+' ⭐</div>'
-    +(tasks.length?taskRows:'<div style="color:#aaa;font-size:13px">No tasks active this day</div>')
-    +'<div class="sep"></div>'
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:10px">Adjustments this day</div>'
-    +(extraRows||'<div style="color:#aaa;font-size:13px;margin-bottom:10px">No adjustments this day</div>')
-    +'<div style="margin-top:12px;background:#f9fafb;border-radius:8px;padding:12px">'
-    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">Add to this day</div>'
-    +'<div class="form-row"><label>Reason</label><input type="text" id="hist-extra-reason" placeholder="e.g. Was very helpful at dinner"></div>'
-    +'<div class="form-row"><label>Stars</label><input type="number" id="hist-extra-stars" value="5" min="1" max="50" style="width:80px"></div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="btn btn-success btn-sm" onclick="histAddExtra(false)">🌟 Give stars</button>'
-    +'<button class="btn btn-danger btn-sm" onclick="histAddExtra(true)">⚠️ Deduct stars (penalty)</button>'
-    +'</div></div></div>';
+
+  // Build header
+  var html='<div class="card">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+    +'<div style="font-size:28px">'+av+'</div>'
+    +'<div><div style="font-size:16px;font-weight:700">'+name+' — '+dateLabel+'</div>'
+    +'<div style="font-size:13px;color:#666">Task stars: '+(taskStarsTotal>=0?'+':'')+taskStarsTotal+' ⭐ &nbsp; Adjustments: '+(extraStars>=0?'+':'')+extraStars+' ⭐</div></div>'
+    +(canEdit?'':'<div style="font-size:12px;color:#aaa;margin-left:auto">View only — beyond 7 days</div>')
+    +'</div>';
+
+  // Task sections grouped by category
+  if(!tasks.length){
+    html+='<div style="color:#aaa;font-size:13px;padding:8px">No tasks active this day</div>';
+  } else {
+    var groups={};var order=['morning','afterschool','anytime','weekend'];
+    tasks.forEach(function(t){var c=t.cat||'anytime';if(!groups[c])groups[c]=[];groups[c].push(t);});
+    order.filter(function(c){return groups[c]&&groups[c].length;}).forEach(function(c){
+      var doneCat=groups[c].filter(function(t){return checks[t.id]==='yes';}).length;
+      html+='<div style="margin-bottom:12px">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +'<span class="tag '+(CAT_TAGS[c]||'tag-anytime')+'">'+(CAT_LABELS[c]||c)+'</span>'
+        +'<span style="font-size:12px;color:#aaa">'+doneCat+'/'+groups[c].length+' yes</span>'
+        +'</div>';
+      groups[c].forEach(function(t){
+        var ans=checks[t.id];
+        var isYes=ans==='yes';var isNo=ans==='no';
+        var nameStyle=isYes?'text-decoration:line-through;color:#bbb':isNo?'color:#c00':'';
+        html+='<div class="task-row" style="gap:8px;flex-wrap:wrap;align-items:center">'
+          +'<span style="font-size:20px;width:26px;text-align:center;flex-shrink:0">'+(isYes?'✅':isNo?'❌':(t.icon||'⭕'))+'</span>'
+          +'<div style="flex:1;min-width:80px;font-size:14px;'+nameStyle+'">'+t.name+'<br><span style="font-size:11px;color:#aaa">⭐ '+t.stars+'</span></div>';
+        if(canEdit){
+          if(ans){
+            // Answered - show badge + Undo button (clears to unanswered)
+            html+='<span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;'
+              +(isYes?'background:#dcfce7;color:#166534;border:1px solid #16a34a':'background:#fee2e2;color:#991b1b;border:1px solid #dc2626')
+              +'">'+(isYes?'✓ Yes':'✗ No')+'</span>';
+            html+='<button class="btn btn-warn btn-sm" data-tid="'+t.id+'" data-stars="'+t.stars+'" data-ans="'+ans+'" onclick="histUndoTask(this)">Undo</button>';
+          } else {
+            // Unanswered - parent can directly set Yes or No
+            html+='<button data-tid="'+t.id+'" data-ans="yes" onclick="histParentAnswer(this)" style="padding:5px 12px;border-radius:8px;border:1.5px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif">Yes</button>'
+              +'<button data-tid="'+t.id+'" data-ans="no" onclick="histParentAnswer(this)" style="padding:5px 12px;border-radius:8px;border:1.5px solid #ccc;background:#fff;color:#555;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif">No</button>';
+          }
+        } else {
+          html+='<span style="font-size:18px">'+(isYes?'✅':isNo?'❌':'⬜')+'</span>';
+        }
+        html+='</div>';
+      });
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+
+  // Extra credits section
+  html+='<div class="card"><div class="section-title" style="margin-bottom:8px">Adjustments this day</div>';
+  if(!extras.length){
+    html+='<div style="color:#aaa;font-size:13px;margin-bottom:10px">No adjustments this day</div>';
+  } else {
+    extras.forEach(function(e,i){
+      var isDeduct=e.stars<0;
+      html+='<div class="task-row" style="gap:8px">'
+        +'<span style="font-size:20px">'+(isDeduct?'⚠️':'🌟')+'</span>'
+        +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+(isDeduct?'#991b1b':'#166534')+'">'+(isDeduct?'Deduction':'Extra credit')+'</div>'
+        +'<div style="font-size:12px;color:#666">'+e.reason+'</div></div>'
+        +'<span style="background:'+(isDeduct?'#fee2e2':'#fce7f3')+';color:'+(isDeduct?'#991b1b':'#9d174d')+';border-radius:6px;font-size:12px;padding:3px 8px;font-weight:600">'+(isDeduct?e.stars:'+'+e.stars)+' ⭐</span>'
+        +(canEdit?'<button class="btn btn-danger btn-sm" onclick="histDeleteExtra('+i+')">Remove</button>':'')
+        +'</div>';
+    });
+  }
+  if(canEdit){
+    html+='<div style="margin-top:10px;background:#f9fafb;border-radius:8px;padding:12px">'
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">Add adjustment</div>'
+      +'<div class="form-row"><label>Reason</label><input type="text" id="hist-extra-reason" placeholder="e.g. Was very helpful"></div>'
+      +'<div class="form-row"><label>Stars</label><input type="number" id="hist-extra-stars" value="5" min="1" max="50" style="width:80px"></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-success btn-sm" onclick="histAddExtra(false)">🌟 Give stars</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="histAddExtra(true)">⚠️ Deduct stars</button>'
+      +'</div></div>';
+  }
+  html+='</div>';
+
+  el.innerHTML=html;
+}
+
+function histParentAnswer(el){
+  var kidId=histContext.kidId;var k=histContext.k;
+  if(!kidId||!k) return;
+  var taskId=el.getAttribute('data-tid');
+  var ans=el.getAttribute('data-ans');
+  var stars=parseInt(el.parentNode.querySelector('[data-tid="'+taskId+'"][data-stars]')||el).getAttribute?
+    parseInt(el.getAttribute('data-stars')||0):0;
+  // Get stars from sibling button
+  var allBtns=el.parentNode.querySelectorAll('[data-tid="'+taskId+'"]');
+  var taskStars=0;
+  allBtns.forEach(function(b){if(b.getAttribute('data-stars')) taskStars=parseInt(b.getAttribute('data-stars'))||0;});
+  if(!taskStars){
+    var task=state.tasks.find(function(t){return t.id===taskId;});
+    if(task) taskStars=task.stars||0;
+  }
+  if(!state.checks[k]) state.checks[k]={};
+  if(!state.checks[k][kidId]) state.checks[k][kidId]={};
+  if(state.checks[k][kidId][taskId]) return; // already answered
+  if(state.stars[kidId]===undefined) state.stars[kidId]=0;
+  if(ans==='yes') state.stars[kidId]+=taskStars;
+  if(ans==='no')  state.stars[kidId]-=taskStars;
+  state.checks[k][kidId][taskId]=ans;
+  saveAndSync();renderHistoryDay();
 }
 
 function histToggleTask(el){
@@ -1201,12 +1246,9 @@ function histUndoTask(el){
   var kidId=histContext.kidId; var k=histContext.k;
   if(!kidId||!k) return;
   var taskId=el.getAttribute('data-tid');
-  var taskStars=parseInt(el.getAttribute('data-stars'))||0;
-  var ans=el.getAttribute('data-ans');
-  if(!state.checks[k]) state.checks[k]={};
-  if(!state.checks[k][kidId]) state.checks[k][kidId]={};
-  if(ans==='yes') state.stars[kidId]=(state.stars[kidId]||0)-taskStars;
-  if(ans==='no')  state.stars[kidId]=(state.stars[kidId]||0)+taskStars;
+  if(!state.checks[k]||!state.checks[k][kidId]) return;
+  // Just clear the answer - no star change
+  // Stars stay as-is; kid re-answers and stars adjust then
   delete state.checks[k][kidId][taskId];
   saveAndSync();renderHistoryDay();
 }
