@@ -161,7 +161,6 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
     <button class="btn" id="ptab-tasks" onclick="pTab('tasks')">Tasks</button>
     <button class="btn" id="ptab-prizes" onclick="pTab('prizes')">Prizes</button>
     <button class="btn" id="ptab-history" onclick="pTab('history')">History</button>
-    <button class="btn" id="ptab-notif" onclick="pTab('notif')">Reminders</button>
   </div>
 
   <div id="p-tasks">
@@ -282,66 +281,6 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
     <div id="hist-day-content" style="display:none"></div>
   </div>
 
-  <div id="p-notif" style="display:none">
-
-    <div class="card">
-      <div class="section-title" style="margin-bottom:10px">Evening reminder</div>
-      <div style="font-size:13px;color:#666;margin-bottom:14px;line-height:1.6">
-        Reminder uses browser notifications. Keep the browser tab open for it to fire.<br>
-        <strong>Windows:</strong> Allow notifications when Chrome asks.<br>
-        <strong>Fire Tablet:</strong> Allow notifications in Silk browser, keep tab open in background.
-      </div>
-      <div class="form-row"><label>Reminder time</label><input type="time" id="notif-time" value="19:30" style="width:140px"></div>
-      <div class="form-row"><label>Message</label><input type="text" id="notif-msg" value="Hey! Don't forget to finish your chores ⭐"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="enableNotif()">Enable reminder</button>
-        <button class="btn btn-sm" onclick="testNotif()">Send test now</button>
-        <button class="btn btn-danger btn-sm" onclick="disableNotif()">Disable</button>
-      </div>
-      <div style="margin-top:12px;font-size:13px;color:#555;font-weight:600" id="notif-panel-status"></div>
-    </div>
-  </div>
-</div>
-
-</div>
-
-<!-- EDIT TASK MODAL -->
-<div id="edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:12px;padding:20px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto">
-    <div style="font-size:16px;font-weight:700;margin-bottom:14px">Edit task</div>
-    <div class="form-row"><label>Task name</label><input type="text" id="edit-task-name" placeholder="Task name"></div>
-    <div class="form-row"><label>Icon</label>
-      <div style="display:flex;align-items:center;gap:8px">
-        <input type="text" id="edit-task-icon" placeholder="paste emoji" style="width:80px">
-        <button class="btn btn-sm" type="button" onclick="toggleEmojiPicker('edit-task-icon')">😊 Pick</button>
-      </div>
-      <div id="emoji-picker-edit" style="display:none;margin-top:8px;background:#f5f5f0;border:1px solid #e0e0d8;border-radius:8px;padding:10px;max-width:320px">
-        <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700">TAP TO SELECT</div>
-        <div id="emoji-grid-edit" style="display:flex;flex-wrap:wrap;gap:4px;font-size:22px;line-height:1.4"></div>
-      </div>
-    </div>
-    <div class="form-row"><label>Stars</label><input type="number" id="edit-task-stars" min="1" max="20" style="width:80px"></div>
-    <div class="form-row"><label>Category</label>
-      <select id="edit-task-cat">
-        <option value="morning">Morning</option>
-        <option value="afterschool">After school</option>
-        <option value="anytime">Anytime</option>
-        <option value="weekend">Weekend</option>
-      </select>
-    </div>
-    <div class="form-row"><label>Days active</label>
-      <div class="radio-group">
-        <label class="radio-opt"><input type="radio" name="edit-tdays" value="daily"> Every day</label>
-        <label class="radio-opt"><input type="radio" name="edit-tdays" value="weekday"> Mon–Fri</label>
-        <label class="radio-opt"><input type="radio" name="edit-tdays" value="weekend"> Weekends</label>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn btn-primary" onclick="saveEditTask()">Save changes</button>
-      <button class="btn" onclick="closeEditModal()">Cancel</button>
-    </div>
-  </div>
-</div>
 
 <script>
 var SCRIPT_URL='https://script.google.com/macros/s/AKfycbzzvMz6s1QA4FuXziG7jraI75XMS4qbX2kxdLSWGZdOg_DyQ3AKX-kKD7JH-j8G7KhNBQ/exec';
@@ -380,7 +319,6 @@ var currentKid=null;
 var viewingDate=null;
 var calYear=new Date().getFullYear();
 var calMonth=new Date().getMonth();
-var notifTimer=null;
 var syncTimeout=null;
 var lastSyncTime=null;
 
@@ -534,12 +472,21 @@ function getKidTasksOnDate(kidId,d){
 
 function calcStreak(kidId){
   var streak=0;var d=new Date();
+  var tk=todayKey();
   for(var i=0;i<180;i++){
     var k=dateKey(d);var dt=new Date(d.getTime());
     var tasks=getKidTasksOnDate(kidId,dt);
+    // Skip today if not all answered yet - don't break streak because of incomplete today
+    if(k===tk){
+      var todayChecks=state.checks[k]&&state.checks[k][kidId];
+      var todayAllYes=tasks.length>0&&tasks.every(function(t){return todayChecks&&todayChecks[t.id]==='yes';});
+      if(todayAllYes) streak++;
+      // Either way move to yesterday - today being incomplete doesn't break streak
+      d.setDate(d.getDate()-1);
+      continue;
+    }
     if(!tasks.length){d.setDate(d.getDate()-1);continue;}
     var checks=state.checks[k]&&state.checks[k][kidId];
-    // Streak requires ALL tasks answered 'yes' (no 'no', no unanswered)
     var allYes=tasks.every(function(t){return checks&&checks[t.id]==='yes';});
     if(allYes) streak++;
     else break;
@@ -791,7 +738,7 @@ function showCelebration(tasks,tk){
 
 // ---- PARENT TABS ----
 function pTab(tab){
-  ['tasks','prizes','history','notif'].forEach(function(t){
+  ['tasks','prizes','history'].forEach(function(t){
     var el=document.getElementById('p-'+t);
     var btn=document.getElementById('ptab-'+t);
     if(el) el.style.display=t===tab?'block':'none';
@@ -799,7 +746,7 @@ function pTab(tab){
   });
   if(tab==='prizes'){renderPrizeAdmin();var ex=document.getElementById('p-prizes-extra');if(ex)ex.style.display='block';}
   if(tab==='tasks'){renderTaskAdmin();var ex2=document.getElementById('p-prizes-extra');if(ex2)ex2.style.display='none';}
-  if(tab==='history'){
+  if(tab==='history'){var ex3=document.getElementById('p-prizes-extra');if(ex3)ex3.style.display='none';
     var today_str=new Date().toISOString().split('T')[0];
     var sevenAgo=new Date();sevenAgo.setDate(sevenAgo.getDate()-7);
     document.getElementById('hist-date').value=today_str;
@@ -807,7 +754,6 @@ function pTab(tab){
     document.getElementById('hist-date').min=sevenAgo.toISOString().split('T')[0];
     document.getElementById('hist-day-content').style.display='none';
   }
-  if(tab==='notif') renderNotifPanel();
 }
 
 document.querySelectorAll('input[name=ttype]').forEach(function(r){
@@ -822,7 +768,6 @@ document.querySelectorAll('input[name=rtype]').forEach(function(r){
     document.getElementById('manual-assign').style.display=document.querySelector('input[name=rtype]:checked').value==='manual'?'block':'none';
   });
 });
-document.querySelectorAll('input[name=unkid]').forEach(function(r){r.addEventListener('change',renderManage);});
 
 function addTask(){
   var name=document.getElementById('task-name').value.trim();
@@ -1070,7 +1015,6 @@ function giveExtraCredit(dir){
   state.extraCredits[tk][kidId].push(entry);
   document.getElementById('extra-reason').value='';
   saveAndSync();
-  renderManage();
   renderHome();
   var name=kidId==='avyan'?'Avyan':'Moksh';
   if(isDeduct) alert('⚠️ '+name+' now has '+state.stars[kidId]+' stars.\nReason: '+reason);
@@ -1082,8 +1026,13 @@ function giveStreakBonus(kidId){
   var bonus=parseInt(document.getElementById('streak-bonus').value)||0;
   if(!bonus){alert('Enter bonus stars first.');return;}
   var streak=calcStreak(kidId);var name=kidId==='avyan'?'Avyan':'Moksh';
-  if(streak>=days){state.stars[kidId]=(state.stars[kidId]||0)+bonus;saveAndSync();alert('🔥 '+name+' has a '+streak+'-day streak!\n+'+bonus+' bonus stars awarded!');}
-  else alert(name+' has '+streak+' days (needs '+days+'). Keep going!');
+  if(streak>=days){
+    state.stars[kidId]=(state.stars[kidId]||0)+bonus;
+    saveAndSync();renderPrizeAdmin();
+    alert('🔥 '+name+' has a '+streak+'-day streak! +'+bonus+' bonus stars awarded!');
+  } else {
+    alert('⚠️ '+name+' only has a '+streak+'-day streak. Target is '+days+' days — not there yet!');
+  }
 }
 
 // PARENT HISTORY EDITOR
@@ -1283,45 +1232,6 @@ function histDeleteExtra(idx){
   saveAndSync();renderHistoryDay();
 }
 
-function renderNotifPanel(){
-  document.getElementById('notif-time').value=state.notif.time||'19:30';
-  document.getElementById('notif-msg').value=state.notif.msg||"Don't forget chores!";
-  updateNotifStatus();
-}
-function updateNotifStatus(){
-  var el=document.getElementById('notif-panel-status');if(!el) return;
-  var perm=typeof Notification!=='undefined'?Notification.permission:'unavailable';
-  el.textContent=state.notif.enabled?'✅ Reminder on at '+state.notif.time+' (permission: '+perm+')':'Reminder is off.';
-}
-function enableNotif(){
-  state.notif.time=document.getElementById('notif-time').value||'19:30';
-  state.notif.msg=document.getElementById('notif-msg').value||"Don't forget chores!";
-  state.notif.enabled=true;saveAndSync();
-  if(typeof Notification!=='undefined'&&Notification.permission==='default'){
-    Notification.requestPermission().then(function(){scheduleNotif();updateNotifStatus();});
-  } else {scheduleNotif();updateNotifStatus();}
-}
-function disableNotif(){
-  state.notif.enabled=false;saveAndSync();
-  if(notifTimer){clearTimeout(notifTimer);notifTimer=null;}
-  updateNotifStatus();
-}
-function testNotif(){
-  if(typeof Notification==='undefined'){alert('Notifications not supported.');return;}
-  if(Notification.permission==='granted') new Notification('Chore Chart 🌟',{body:state.notif.msg});
-  else if(Notification.permission==='default') Notification.requestPermission().then(function(p){if(p==='granted') new Notification('Chore Chart 🌟',{body:'Test! ⭐'});});
-  else alert('Notifications blocked.\n\nWindows Chrome: Click the lock icon → Notifications → Allow.\nFire Tablet Silk: Settings → Site Settings → Notifications → Allow.');
-}
-function scheduleNotif(){
-  if(notifTimer){clearTimeout(notifTimer);notifTimer=null;}
-  if(!state.notif.enabled||typeof Notification==='undefined'||Notification.permission!=='granted') return;
-  var parts=(state.notif.time||'19:30').split(':');
-  var h=parseInt(parts[0]);var m=parseInt(parts[1]);
-  var now=new Date();var fire=new Date();fire.setHours(h,m,0,0);
-  if(fire<=now) fire.setDate(fire.getDate()+1);
-  notifTimer=setTimeout(function(){new Notification('Chore Chart 🌟',{body:state.notif.msg});scheduleNotif();},fire-now);
-}
-
 function checkPasscode(){goTo('s-parent');}
 
 var EMOJIS=['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','💟','❣️','💔','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💨','🕳️','💬','💭','💤','👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁️','👅','👄','🫦','🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🍕','🍔','🌮','🌯','🍜','🍣','🎂','🍩','🍪','🍫','🍬','🍭','🍦','🥛','🥤','🧃','☕','🍵','🥛','🍺','🌍','🌎','🌏','⭐','🌟','💫','✨','🌈','☀️','🌤️','⛅','🌦️','🌧️','⛈️','🌩️','🌪️','❄️','☃️','⛄','🌊','🔥','💧','🌱','🌲','🌳','🌴','🌵','🌾','🍀','🍁','🍂','🍃','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🪳','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🐿️','🦔','⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🎣','🤿','🎽','🎿','🛷','🥌','🏆','🥇','🥈','🥉','🏅','🎖️','🎗️','🎫','🎟️','🎪','🎭','🎨','🖼️','🎰','🎲','🎯','🎳','🎮','🎸','🎹','🎺','🎻','🥁','🪘','🎷','🎵','🎶','🎙️','🎚️','🎛️','📻','📺','📷','📸','📹','🎥','📽️','🎬','📱','💻','⌨️','🖥️','🖨️','🖱️','🗜️','💾','💿','📀','📼','📟','📠','☎️','📞','📡','🔋','🔌','💡','🔦','🕯️','🪔','🧯','🛒','💰','💵','💳','📈','📉','📊','📋','📌','📍','✂️','🗃️','🗑️','🔒','🔓','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🛡️','🔧','🔩','⚙️','🗜️','🔗','⛓️','🧲','🪜','🧰','🪣','🧲','💊','🩺','🩹','🧬','🔬','🔭','📡','🚗','🚕','🚙','🚌','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛹','🛼','🚏','⛽','🚦','🚥','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🏕️','🏞️','🎠','🎡','🎢','🛤️','🛣️','🗺️','🗾','🧭','🏔️','⛰️','🌋','🗻','🏜️','🏝️','🏖️','🏗️','🧱','🪨','🪵','🛖'];
@@ -1353,7 +1263,6 @@ function toggleEmojiPicker(targetId){
   }
 }
 
-var editingTaskId=null;
 function editTask(id){
   var t=state.tasks.find(function(x){return x.id===id;});
   if(!t) return;
@@ -1414,24 +1323,6 @@ function editTask(id){
   row.appendChild(wrap);
 }
 
-function saveEditTask(){
-  if(!editingTaskId) return;
-  var t=state.tasks.find(function(x){return x.id===editingTaskId;});
-  if(!t) return;
-  var name=document.getElementById('edit-task-name').value.trim();
-  if(!name){alert('Please enter a task name.');return;}
-  t.name=name;
-  t.icon=document.getElementById('edit-task-icon').value.trim()||t.icon||'✅';
-  t.stars=parseInt(document.getElementById('edit-task-stars').value)||1;
-  t.cat=document.getElementById('edit-task-cat').value;
-  var dayRadio=document.querySelector('input[name="edit-tdays"]:checked');
-  if(dayRadio) t.days=dayRadio.value;
-  closeEditModal();
-  saveAndSync();renderTaskAdmin();
-}
-
-
-
 function saveEditTask(id){
   var t=state.tasks.find(function(x){return x.id===id;});if(!t) return;
   var name=document.getElementById('et-name-'+id).value.trim();
@@ -1441,7 +1332,6 @@ function saveEditTask(id){
   t.name=name;t.icon=icon||t.icon||'✅';t.stars=stars;
   saveAndSync();renderTaskAdmin();
 }
-var EMOJIS=['🥛','🧴','🍱','💧','🎒','📁','🙏','💤','💩','👕','📺','🪷','🛏️','🧹','🍽️','📚','🎯','⭐','🌟','🏆','💪','🎉','❤️','🌈','🌞','🌙','🌺','🌸','🌻','🦁','🐯','🐶','🐱','🐸','🎵','🎨','✏️','📝','🏠','🎂','🍕','🍦','🍪','🎁','🎈','🌍','💎','🔥','⚡','🌊','🍀','🦋','🧼','🪥','👟','🚿','🏃'];
 function showEmojiPicker(id){
   var picker=document.getElementById('ep-'+id);
   if(!picker) return;
@@ -1466,7 +1356,6 @@ loadLocal();
 renderHome();
 pTab('tasks');
 renderTaskAdmin();
-scheduleNotif();
 loadFromSheets(function(){
   renderHome();
   renderTaskAdmin();
