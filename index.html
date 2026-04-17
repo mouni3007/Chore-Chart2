@@ -293,13 +293,7 @@ input[type=checkbox]{width:26px;height:26px;cursor:pointer;accent-color:#2563eb;
   </div>
 
   <div id="p-notif" style="display:none">
-    <div class="card">
-      <div class="section-title" style="margin-bottom:10px">Parent passcode</div>
-      <div style="font-size:13px;color:#666;margin-bottom:12px">Set a 4-digit passcode to protect parent settings. Leave blank for no passcode.</div>
-      <div class="form-row"><label>New passcode (4 digits, or blank to remove)</label><input type="number" id="new-passcode" placeholder="e.g. 1234" style="width:140px" maxlength="4"></div>
-      <button class="btn btn-primary btn-sm" onclick="savePasscode()">Save passcode</button>
-      <div id="passcode-status" style="font-size:13px;color:#666;margin-top:8px"></div>
-    </div>
+
     <div class="card">
       <div class="section-title" style="margin-bottom:10px">Evening reminder</div>
       <div style="font-size:13px;color:#666;margin-bottom:14px;line-height:1.6">
@@ -389,7 +383,7 @@ var state={
   checks:{},extraCredits:{},
   rotationStart:new Date().toDateString(),
   avatars:{avyan:'🦁',moksh:'🦁'},
-  notif:{enabled:false,time:'19:30',msg:"Hey! Don't forget to finish your chores ⭐"},passcode:''
+  notif:{enabled:false,time:'19:30',msg:"Hey! Don't forget to finish your chores ⭐"}
 };
 
 var currentKid=null;
@@ -409,7 +403,7 @@ function loadLocal(){
       state.checks=p.checks||{};state.extraCredits=p.extraCredits||{};
       state.rotationStart=p.rotationStart||new Date().toDateString();
       state.avatars=p.avatars||{avyan:'🦁',moksh:'🦁'};
-      state.notif=p.notif||{enabled:false,time:'19:30',msg:"Don't forget chores!"};state.passcode=p.passcode||'';
+      state.notif=p.notif||{enabled:false,time:'19:30',msg:"Don't forget chores!"};
     }
   }catch(e){}
 }
@@ -441,7 +435,6 @@ function doSync(){
     rotationStart:state.rotationStart,
     avatars:JSON.stringify(state.avatars),
     notif:JSON.stringify(state.notif),
-    passcode:state.passcode||''
   };
   var cbName='choreSave'+Date.now();
   var done=false;
@@ -474,7 +467,6 @@ function loadFromSheets(cb){
       if(data.rotationStart)state.rotationStart=data.rotationStart;
       try{if(data.avatars)state.avatars=JSON.parse(data.avatars);}catch(e){}
       try{if(data.notif)state.notif=JSON.parse(data.notif);}catch(e){}
-      if(data.passcode!==undefined)state.passcode=data.passcode;
       if(!state.tasks||!state.tasks.length)state.tasks=JSON.parse(JSON.stringify(DEFAULT_TASKS));
       if(!state.extraCredits)state.extraCredits={};
       saveLocal();lastSyncTime=new Date();
@@ -1286,35 +1278,8 @@ function scheduleNotif(){
   notifTimer=setTimeout(function(){new Notification('Chore Chart 🌟',{body:state.notif.msg});scheduleNotif();},fire-now);
 }
 
-function checkPasscode(){
-  if(!state.passcode||state.passcode.toString().trim()===''){goTo('s-parent');return;}
-  var entered=prompt('Enter parent passcode:');
-  if(entered===null) return;
-  if(entered.toString().trim()===state.passcode.toString().trim()){
-    goTo('s-parent');
-  } else {
-    alert('Wrong passcode. Try again.');
-  }
-}
-function savePasscode(){
-  var val=document.getElementById('new-passcode').value.trim();
-  if(val!==''&&(isNaN(val)||val.length>6)){alert('Please enter up to 6 digits, or leave blank.');return;}
-  state.passcode=val;
-  saveLocal();
-  // Save passcode with a tiny dedicated sync so it doesn't get lost in large payload
-  var cbName='chorePC'+Date.now();
-  var done=false;
-  function cleanup(){var el=document.getElementById('chorePC');if(el)el.parentNode.removeChild(el);try{delete window[cbName];}catch(e){}}
-  window[cbName]=function(d){if(done)return;done=true;cleanup();};
-  var s=document.createElement('script');s.id='chorePC';
-  var miniPayload={passcode:val};
-  s.src=SCRIPT_URL+'?action=saveAll&callback='+cbName+'&payload='+encodeURIComponent(JSON.stringify(miniPayload));
-  s.onerror=function(){if(!done){done=true;cleanup();}};
-  setTimeout(function(){if(!done){done=true;cleanup();}},8000);
-  document.head.appendChild(s);
-  document.getElementById('passcode-status').textContent=val===''?'Passcode removed.':'Passcode saved ✅';
-  document.getElementById('new-passcode').value='';
-}
+function checkPasscode(){goTo('s-parent');}
+
 var EMOJIS=['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','💟','❣️','💔','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💨','🕳️','💬','💭','💤','👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁️','👅','👄','🫦','🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🍕','🍔','🌮','🌯','🍜','🍣','🎂','🍩','🍪','🍫','🍬','🍭','🍦','🥛','🥤','🧃','☕','🍵','🥛','🍺','🌍','🌎','🌏','⭐','🌟','💫','✨','🌈','☀️','🌤️','⛅','🌦️','🌧️','⛈️','🌩️','🌪️','❄️','☃️','⛄','🌊','🔥','💧','🌱','🌲','🌳','🌴','🌵','🌾','🍀','🍁','🍂','🍃','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🪳','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🐿️','🦔','⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🎣','🤿','🎽','🎿','🛷','🥌','🏆','🥇','🥈','🥉','🏅','🎖️','🎗️','🎫','🎟️','🎪','🎭','🎨','🖼️','🎰','🎲','🎯','🎳','🎮','🎸','🎹','🎺','🎻','🥁','🪘','🎷','🎵','🎶','🎙️','🎚️','🎛️','📻','📺','📷','📸','📹','🎥','📽️','🎬','📱','💻','⌨️','🖥️','🖨️','🖱️','🗜️','💾','💿','📀','📼','📟','📠','☎️','📞','📡','🔋','🔌','💡','🔦','🕯️','🪔','🧯','🛒','💰','💵','💳','📈','📉','📊','📋','📌','📍','✂️','🗃️','🗑️','🔒','🔓','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🛡️','🔧','🔩','⚙️','🗜️','🔗','⛓️','🧲','🪜','🧰','🪣','🧲','💊','🩺','🩹','🧬','🔬','🔭','📡','🚗','🚕','🚙','🚌','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛹','🛼','🚏','⛽','🚦','🚥','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🏕️','🏞️','🎠','🎡','🎢','🛤️','🛣️','🗺️','🗾','🧭','🏔️','⛰️','🌋','🗻','🏜️','🏝️','🏖️','🏗️','🧱','🪨','🪵','🛖'];
 
 function toggleEmojiPicker(targetId){
@@ -1452,13 +1417,7 @@ function showEmojiPicker(id){
   picker.style.display='block';
 }
 
-// Emergency passcode reset via URL param
-if(window.location.search.indexOf('resetpasscode=1')>=0){
-  try{var ls=JSON.parse(localStorage.getItem('choreV4')||'{}');ls.passcode='';localStorage.setItem('choreV4',JSON.stringify(ls));}catch(e){}
-  state.passcode='';
-  window.history.replaceState({},'',window.location.pathname);
-  alert('Passcode cleared! You can now access Parent Settings freely.');
-}
+
 loadLocal();
 renderHome();
 pTab('tasks');
