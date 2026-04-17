@@ -1246,13 +1246,15 @@ function histUndoTask(el){
   var kidId=histContext.kidId; var k=histContext.k;
   if(!kidId||!k) return;
   var taskId=el.getAttribute('data-tid');
+  var taskStars=parseInt(el.getAttribute('data-stars'))||0;
+  var ans=el.getAttribute('data-ans');
   if(!state.checks[k]||!state.checks[k][kidId]) return;
-  // Just clear the answer - no star change
-  // Stars stay as-is; kid re-answers and stars adjust then
+  if(state.stars[kidId]===undefined) state.stars[kidId]=0;
+  if(ans==='yes') state.stars[kidId]=state.stars[kidId]-taskStars;
+  if(ans==='no')  state.stars[kidId]=state.stars[kidId]+taskStars;
   delete state.checks[k][kidId][taskId];
   saveAndSync();renderHistoryDay();
 }
-
 function histAddExtra(isDeduct){
   var kidId=histContext.kidId; var k=histContext.k;
   if(!kidId||!k) return;
