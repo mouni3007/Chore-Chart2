@@ -194,9 +194,10 @@ input[type=text],input[type=number],input[type=time],input[type=date],select{wid
     <div class="card">
       <div class="section-title" style="margin-bottom:12px">Add prize</div>
       <div class="form-row"><label>Prize description</label><input type="text" id="prize-name" placeholder="e.g. $10 pocket money"></div>
+      <div style="font-size:13px;color:#666;margin-bottom:10px">Leave a kid's stars blank to hide this prize from them.</div>
       <div class="grid2" style="margin-bottom:12px">
-        <div><label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:4px">⭐ Stars for Avyan</label><input type="number" id="prize-stars-avyan" value="100" min="1"></div>
-        <div><label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:4px">⭐ Stars for Moksh</label><input type="number" id="prize-stars-moksh" value="100" min="1"></div>
+        <div><label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:4px">⭐ Stars for Avyan</label><input type="number" id="prize-stars-avyan" placeholder="leave blank to skip" min="1" style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px"></div>
+        <div><label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:4px">⭐ Stars for Moksh</label><input type="number" id="prize-stars-moksh" placeholder="leave blank to skip" min="1" style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px"></div>
       </div>
       <button class="btn btn-primary" onclick="addPrize()">+ Add prize</button>
     </div>
@@ -542,7 +543,8 @@ function renderKidScreen(){
   if(!state.prizes.length){prizesEl.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:12px">No prizes yet — ask a parent!</div>';}
   else{prizesEl.innerHTML='';
     state.prizes.forEach(function(p){
-      var target=currentKid==='avyan'?(p.stars_avyan||100):(p.stars_moksh||100);
+      var target=currentKid==='avyan'?p.stars_avyan:p.stars_moksh;
+      if(!target) return; // prize not set for this kid
       var pct=Math.min(100,Math.max(0,Math.round(myStars/target*100)));
       var remaining=target-myStars;
       prizesEl.innerHTML+='<div style="padding:9px 0;border-bottom:1px solid #f0f0ec">'
@@ -793,8 +795,11 @@ function toggleEmojiPicker(){
 function addPrize(){
   var name=document.getElementById('prize-name').value.trim();
   if(!name){alert('Enter a prize description.');return;}
-  var sa=parseInt(document.getElementById('prize-stars-avyan').value)||100;
-  var sm=parseInt(document.getElementById('prize-stars-moksh').value)||100;
+  var saVal=document.getElementById('prize-stars-avyan').value.trim();
+  var smVal=document.getElementById('prize-stars-moksh').value.trim();
+  var sa=saVal?parseInt(saVal):null;
+  var sm=smVal?parseInt(smVal):null;
+  if(!sa&&!sm){alert('Set stars for at least one kid.');return;}
   var newPrize={id:'p'+Date.now(),name:name,stars_avyan:sa,stars_moksh:sm};
   showSync('loading','⏳ Saving prize...');
   sbPost('prizes',newPrize).then(function(){
@@ -809,41 +814,73 @@ function addPrize(){
 function renderPrizeAdmin(){
   var el=document.getElementById('prize-list-admin');el.innerHTML='';
   var kids=[{id:'avyan',name:'Avyan'},{id:'moksh',name:'Moksh'}];
-  // Star balances
-  var balDiv=document.createElement('div');balDiv.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px';
+
+  // Star balances - display only, no add/remove buttons
+  var balDiv=document.createElement('div');
+  balDiv.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px';
   kids.forEach(function(k){
     var myStars=state.stars[k.id]||0;var av=state.avatars[k.id]||'🌟';
-    var card=document.createElement('div');card.style.cssText='background:#f5f5f0;border-radius:10px;padding:14px;text-align:center';
-    card.innerHTML='<div style="font-size:28px">'+av+'</div><div style="font-size:15px;font-weight:700;margin-top:4px">'+k.name+'</div><div style="font-size:22px;font-weight:700;color:#1a1a1a;margin:4px 0">⭐ '+myStars+'</div><div style="font-size:12px;color:#888">🔥 '+calcStreak(k.id)+'-day streak</div>';
-    var adjRow=document.createElement('div');adjRow.style.cssText='display:flex;gap:4px;margin-top:8px;justify-content:center;flex-wrap:wrap';
-    var inp=document.createElement('input');inp.type='number';inp.placeholder='Stars';inp.id='adj-'+k.id;inp.style.cssText='width:70px;padding:4px;border:1px solid #ccc;border-radius:6px;font-size:13px;text-align:center';
-    var addBtn=document.createElement('button');addBtn.className='btn btn-success btn-sm';addBtn.textContent='+ Add';
-    (function(kid){addBtn.onclick=function(){adjustStars(kid,'add');};})(k.id);
-    var remBtn=document.createElement('button');remBtn.className='btn btn-danger btn-sm';remBtn.textContent='- Remove';
-    (function(kid){remBtn.onclick=function(){adjustStars(kid,'deduct');};})(k.id);
-    adjRow.appendChild(inp);adjRow.appendChild(addBtn);adjRow.appendChild(remBtn);
-    card.appendChild(adjRow);balDiv.appendChild(card);
+    var card=document.createElement('div');
+    card.style.cssText='background:#f5f5f0;border-radius:10px;padding:14px;text-align:center';
+    card.innerHTML='<div style="font-size:28px">'+av+'</div>'
+      +'<div style="font-size:15px;font-weight:700;margin-top:4px">'+k.name+'</div>'
+      +'<div style="font-size:22px;font-weight:700;color:#1a1a1a;margin:4px 0">⭐ '+myStars+'</div>'
+      +'<div style="font-size:12px;color:#888">🔥 '+calcStreak(k.id)+'-day streak</div>';
+    balDiv.appendChild(card);
   });
   el.appendChild(balDiv);
-  if(!state.prizes.length){var empty=document.createElement('div');empty.style.cssText='color:#aaa;font-size:14px;text-align:center;padding:16px';empty.textContent='No prizes yet';el.appendChild(empty);return;}
+
+  if(!state.prizes.length){
+    var empty=document.createElement('div');
+    empty.style.cssText='color:#aaa;font-size:14px;text-align:center;padding:16px';
+    empty.textContent='No prizes yet — add one above';
+    el.appendChild(empty);return;
+  }
+
   state.prizes.forEach(function(p){
-    var card=document.createElement('div');card.style.cssText='background:#fff;border:1px solid #e0e0d8;border-radius:12px;padding:14px;margin-bottom:10px';
-    var header=document.createElement('div');header.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
-    var title=document.createElement('span');title.style.cssText='font-size:15px;font-weight:700';title.textContent=p.name;
-    var delBtn=document.createElement('button');delBtn.className='btn btn-danger btn-sm';delBtn.textContent='Delete';
-    (function(pid){delBtn.onclick=function(){deletePrize(pid);};})(p.id);
-    header.appendChild(title);header.appendChild(delBtn);card.appendChild(header);
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border:1px solid #e0e0d8;border-radius:12px;padding:14px;margin-bottom:10px';
+    var title=document.createElement('div');
+    title.style.cssText='font-size:15px;font-weight:700;margin-bottom:10px';
+    title.textContent=p.name;
+    card.appendChild(title);
+
     kids.forEach(function(k){
+      var target=k.id==='avyan'?p.stars_avyan:p.stars_moksh;
+      if(!target) return; // this kid doesn't have this prize
       var myStars=state.stars[k.id]||0;
-      var target=k.id==='avyan'?(p.stars_avyan||100):(p.stars_moksh||100);
       var pct=Math.min(100,Math.max(0,Math.round(myStars/target*100)));
-      var remaining=target-myStars;var av=state.avatars[k.id]||'🌟';
-      var kidRow=document.createElement('div');kidRow.style.cssText='margin-bottom:10px;padding:10px;background:#f9fafb;border-radius:8px';
-      kidRow.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span style="font-size:14px;font-weight:700">'+av+' '+k.name+'</span><span style="font-size:12px;color:#666">⭐ '+myStars+' / '+target+' stars</span></div>'
-        +'<div style="height:10px;background:#e5e5e0;border-radius:99px;overflow:hidden;margin-bottom:4px"><div style="height:100%;background:#16a34a;border-radius:99px;width:'+pct+'%"></div></div>'
-        +'<div style="font-size:12px;color:'+(pct>=100?'#16a34a':'#888')+';margin-bottom:4px">'+(pct>=100?'🎉 Ready to redeem!':remaining+' more star'+(remaining===1?'':'s')+' to go')+'</div>';
+      var remaining=target-myStars;
+      var av=state.avatars[k.id]||'🌟';
+
+      var kidRow=document.createElement('div');
+      kidRow.style.cssText='margin-bottom:10px;padding:10px;background:#f9fafb;border-radius:8px;position:relative';
+
+      // X button per kid
+      var xBtn=document.createElement('button');
+      xBtn.textContent='✕';
+      xBtn.title='Remove this prize for '+k.name+' only';
+      xBtn.style.cssText='position:absolute;top:8px;right:8px;background:none;border:none;color:#aaa;font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1';
+      xBtn.onmouseover=function(){this.style.color='#c00';};
+      xBtn.onmouseout=function(){this.style.color='#aaa';};
+      (function(pid,kid){xBtn.onclick=function(){removePrizeForKid(pid,kid);};})(p.id,k.id);
+
+      kidRow.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-right:24px">'
+        +'<span style="font-size:14px;font-weight:700">'+av+' '+k.name+'</span>'
+        +'<span style="font-size:12px;color:#666">⭐ '+myStars+' / '+target+' stars</span>'
+        +'</div>'
+        +'<div style="height:10px;background:#e5e5e0;border-radius:99px;overflow:hidden;margin-bottom:4px">'
+          +'<div style="height:100%;background:#16a34a;border-radius:99px;width:'+pct+'%"></div>'
+        +'</div>'
+        +'<div style="font-size:12px;color:'+(pct>=100?'#16a34a':'#888')+';margin-bottom:4px">'
+          +(pct>=100?'🎉 Ready to redeem!':remaining+' more star'+(remaining===1?'':'s')+' to go')
+        +'</div>';
+      kidRow.appendChild(xBtn);
+
       if(pct>=100){
-        var redeemBtn=document.createElement('button');redeemBtn.className='btn btn-warn btn-sm';redeemBtn.style.marginTop='6px';
+        var redeemBtn=document.createElement('button');
+        redeemBtn.className='btn btn-warn btn-sm';
+        redeemBtn.style.marginTop='6px';
         redeemBtn.textContent='🎁 Redeem for '+k.name+' (-'+target+' stars)';
         (function(kid,tgt,pname){redeemBtn.onclick=function(){redeemPrize(kid,tgt,pname);};})(k.id,target,p.name);
         kidRow.appendChild(redeemBtn);
@@ -854,15 +891,30 @@ function renderPrizeAdmin(){
   });
 }
 
-function adjustStars(kidId,dir){
-  var inp=document.getElementById('adj-'+kidId);
-  var amt=parseInt(inp.value)||0;if(amt<=0){alert('Enter a number first.');return;}
-  if(dir==='add') state.stars[kidId]=(state.stars[kidId]||0)+amt;
-  else state.stars[kidId]=(state.stars[kidId]||0)-amt;
-  inp.value='';
-  sbUpsert('stars',{kid:kidId,total:state.stars[kidId]}).then(function(){
-    showSync('ok','✅ Stars updated');renderPrizeAdmin();renderHome();
-  }).catch(function(e){showSync('err','⚠️ '+e.message);});
+function removePrizeForKid(prizeId,kidId){
+  var p=state.prizes.find(function(x){return x.id===prizeId;});
+  if(!p) return;
+  // Clear this kid's stars target
+  var update={};
+  if(kidId==='avyan') update.stars_avyan=null;
+  else update.stars_moksh=null;
+  // Check if other kid still has a target
+  var otherStill=(kidId==='avyan')?p.stars_moksh:p.stars_avyan;
+  showSync('loading','⏳ Removing...');
+  if(otherStill){
+    // Just null out this kid's target
+    sbPatch('prizes','id=eq.'+prizeId,update).then(function(){
+      if(kidId==='avyan') p.stars_avyan=null;
+      else p.stars_moksh=null;
+      showSync('ok','✅ Removed');renderPrizeAdmin();
+    }).catch(function(e){showSync('err','⚠️ '+e.message);});
+  } else {
+    // Both kids removed - delete whole prize
+    sbDelete('prizes','id=eq.'+prizeId).then(function(){
+      state.prizes=state.prizes.filter(function(x){return x.id!==prizeId;});
+      showSync('ok','✅ Prize deleted');renderPrizeAdmin();
+    }).catch(function(e){showSync('err','⚠️ '+e.message);});
+  }
 }
 
 function redeemPrize(kidId,stars,name){
