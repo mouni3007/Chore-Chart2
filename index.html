@@ -263,13 +263,11 @@ var EMOJIS=['🥛','🧴','🍱','💧','🎒','📁','🙏','💤','💩','👕
 
 // In-memory state - loaded from Supabase
 var state={
-  tasks:[],
-  prizes:[],
-  stars:{avyan:0,moksh:0},
+  tasks:[],prizes:[],stars:{avyan:0,moksh:0},
   avatars:{avyan:'🦁',moksh:'🦁'},
-  dailyLog:{},      // {dateStr: {avyan:{taskId:'yes'/'no'}, moksh:{...}}}
-  extraCredits:{},  // {dateStr: {avyan:[{reason,stars}], moksh:[...]}}
-  rotationStart:new Date().toDateString()
+  dailyLog:{},extraCredits:{},
+  rotationStart:new Date().toDateString(),
+  passcode:''
 };
 
 var currentKid=null;
@@ -344,6 +342,7 @@ function loadAll(cb){
       if(r.key==='avatar_avyan') state.avatars.avyan=r.value;
       if(r.key==='avatar_moksh') state.avatars.moksh=r.value;
       if(r.key==='rotation_start') state.rotationStart=r.value;
+      if(r.key==='passcode') state.passcode=r.value||'';
     });
     // Build dailyLog
     state.dailyLog={};
@@ -1142,7 +1141,35 @@ function histDeleteExtra(idx){
   }).catch(function(e){showSync('err','⚠️ '+e.message);});
 }
 
+function checkPasscode(){
+  var pin=state.passcode||'';
+  if(!pin){goTo('s-parent');return;}
+  var entered=prompt('Enter parent PIN:');
+  if(entered===null) return;
+  if(entered.trim()===pin.trim()) goTo('s-parent');
+  else alert('Wrong PIN. Try again.');
+}
+function savePin(){
+  var val=document.getElementById('new-pin').value.trim();
+  if(val!==''&&(isNaN(val)||val.length>6)){alert('Please enter up to 6 digits, or leave blank to remove.');return;}
+  state.passcode=val;
+  showSync('loading','⏳ Saving PIN...');
+  sbUpsert('config',{key:'passcode',value:val}).then(function(){
+    showSync('ok','✅ PIN saved');
+    document.getElementById('pin-status').textContent=val===''?'PIN removed.':'PIN set ✅';
+    document.getElementById('new-pin').value='';
+  }).catch(function(e){showSync('err','⚠️ '+e.message);});
+}
+
 // ── INIT ──
+// Safety net: ?resetpin=1 clears PIN from DB
+if(window.location.search.indexOf('resetpin=1')>=0){
+  sbUpsert('config',{key:'passcode',value:''}).then(function(){
+    state.passcode='';
+    window.history.replaceState({},'',window.location.pathname);
+    alert('PIN cleared! You can now access Parent Settings.');
+  });
+}
 loadAll(function(){
   renderHome();
   pTab('tasks');
