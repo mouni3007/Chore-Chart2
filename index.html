@@ -131,6 +131,7 @@ input[type=text],input[type=number],input[type=time],input[type=date],select{wid
     <button class="btn" id="ptab-tasks" onclick="pTab('tasks')">Tasks</button>
     <button class="btn" id="ptab-prizes" onclick="pTab('prizes')">Prizes</button>
     <button class="btn" id="ptab-history" onclick="pTab('history')">History</button>
+    <button class="btn" id="ptab-settings" onclick="pTab('settings')">Settings</button>
   </div>
 
   <!-- TASKS -->
@@ -245,6 +246,18 @@ input[type=text],input[type=number],input[type=time],input[type=date],select{wid
       <button class="btn btn-primary" onclick="loadHistoryDay()">Load this day</button>
     </div>
     <div id="hist-day-content" style="display:none"></div>
+  </div>
+
+  <div id="p-settings" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Parent PIN</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">Set a PIN to stop kids accessing parent settings. Leave blank to remove.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="number" id="new-pin" placeholder="e.g. 1234" style="width:130px;padding:9px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px">
+        <button class="btn btn-primary btn-sm" onclick="savePin()">Save PIN</button>
+      </div>
+      <div id="pin-status" style="font-size:13px;color:#666;margin-top:8px"></div>
+    </div>
   </div>
 </div>
 </div>
@@ -636,7 +649,7 @@ function showCelebration(tasks,vk){
 
 // ── PARENT TABS ──
 function pTab(tab){
-  ['tasks','prizes','history'].forEach(function(t){
+  ['tasks','prizes','history','settings'].forEach(function(t){
     var el=document.getElementById('p-'+t);
     var btn=document.getElementById('ptab-'+t);
     if(el) el.style.display=t===tab?'block':'none';
